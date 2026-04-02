@@ -40,6 +40,29 @@ from fbox.containers.models import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
 
+def _format_docker_args(args: list[str]) -> str:
+    """Group flags with their values; run consecutive non-flag tokens together."""
+    groups: list[str] = []
+    i = 0
+    while i < len(args):
+        token = args[i]
+        next_is_value = i + 1 < len(args) and not args[i + 1].startswith("-")
+        if token.startswith("-") and "=" not in token and next_is_value:
+            groups.append(f"{token} {args[i + 1]}")
+            i += 2
+        elif not token.startswith("-"):
+            chunk = [token]
+            while i + 1 < len(args) and not args[i + 1].startswith("-"):
+                i += 1
+                chunk.append(args[i])
+            groups.append(" ".join(chunk))
+            i += 1
+        else:
+            groups.append(token)
+            i += 1
+    return " \\\n    ".join(groups)
+
+
 def _section(title: str) -> None:
     print(f"\n[{title}]")
 
@@ -117,7 +140,7 @@ def print_debug_report(
         extra_mounts_readonly=config.extra_mounts_readonly,
     )
     args = ["docker"] + build_create_args(config, preview_record)
-    print("  " + " \\\n    ".join(args))
+    print("  " + _format_docker_args(args))
 
 
 def print_container_list(store: ContainerStateStore) -> None:
