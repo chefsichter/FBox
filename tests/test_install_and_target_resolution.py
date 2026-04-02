@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from conftest import DummyCompletedProcess
 
 from fbox.containers.target_resolution import resolve_target, validate_mounts
 from fbox.install.installer_main import main as installer_main
@@ -113,8 +114,3 @@ def test_installer_main_writes_config_and_installs_wrapper(
     config_path = tmp_path / "config" / "fbox" / "config.toml"
     assert config_path.exists()
     assert install_calls
-
-
-class DummyCompletedProcess:
-    def __init__(self, returncode: int) -> None:
-        self.returncode = returncode

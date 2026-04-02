@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from conftest import DummyCompletedProcess
 
 from fbox.cli.interactive_prompts import (
     build_default_name,
@@ -113,15 +114,3 @@ def test_ensure_started_starts_only_when_needed(monkeypatch) -> None:
     docker_runtime.ensure_started("fbox-demo")
 
     assert calls == [["start", "fbox-demo"]]
-
-
-class DummyCompletedProcess:
-    def __init__(
-        self,
-        returncode: int,
-        stdout: str = "",
-        stderr: str = "",
-    ) -> None:
-        self.returncode = returncode
-        self.stdout = stdout
-        self.stderr = stderr

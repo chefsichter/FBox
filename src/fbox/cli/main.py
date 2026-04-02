@@ -124,15 +124,23 @@ def reuse_existing_container(
     return None
 
 
+def _drop_stale_record(
+    store: ContainerStateStore,
+    record: ContainerRecord | None,
+) -> ContainerRecord | None:
+    """Delete the stored record if Docker no longer knows the container."""
+    if record is not None and not container_exists(record.name):
+        store.delete_by_name(record.name)
+        return None
+    return record
+
+
 def reuse_by_project_path(
     store: ContainerStateStore,
     project_path: Path,
     config: AppConfig,
 ) -> int | None:
-    record = store.find_by_project_path(project_path)
-    if record is not None and not container_exists(record.name):
-        store.delete_by_name(record.name)
-        record = None
+    record = _drop_stale_record(store, store.find_by_project_path(project_path))
     if record is not None:
         return start_and_open(record.name, config)
     existing_name = find_container_by_label("ch.fbox.project_path", str(project_path))
@@ -146,10 +154,7 @@ def reuse_by_container_name(
     container_name: str,
     config: AppConfig,
 ) -> int | None:
-    record = store.find_by_name(container_name)
-    if record is not None and not container_exists(record.name):
-        store.delete_by_name(record.name)
-        record = None
+    record = _drop_stale_record(store, store.find_by_name(container_name))
     if record is not None:
         return start_and_open(record.name, config)
     if container_exists(container_name):

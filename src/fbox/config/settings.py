@@ -36,6 +36,7 @@ CONFIG_FILE_NAME = "config.toml"
 STATE_FILE_NAME = "containers.json"
 DEFAULT_IMAGE = "ubuntu:24.04"
 DEFAULT_SHELL = "/bin/bash"
+DEFAULT_EDITOR = "nano"
 DEFAULT_CONTAINER_PREFIX = "fbox"
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[3] / "config" / "fbox.example.toml"
@@ -52,7 +53,7 @@ class AppConfig:
     extra_mounts_readonly: bool = True
     workspace_readonly: bool = False
     container_tmpfs_size: str = "512m"
-    editor_command: str = "nano"
+    editor_command: str = ""
     install_wrapper_path: str = "~/.local/bin/fbox"
 
     @property
@@ -91,7 +92,7 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         extra_mounts_readonly=bool(payload.get("extra_mounts_readonly", True)),
         workspace_readonly=bool(payload.get("workspace_readonly", False)),
         container_tmpfs_size=str(payload.get("container_tmpfs_size", "512m")),
-        editor_command=str(payload.get("editor_command", "nano")),
+        editor_command=str(payload.get("editor_command", "")),
         install_wrapper_path=str(
             payload.get("install_wrapper_path", "~/.local/bin/fbox")
         ),
@@ -101,4 +102,4 @@ def load_config(config_path: Path | None = None) -> AppConfig:
 def resolve_editor_command(config: AppConfig) -> str:
     if config.editor_command:
         return config.editor_command
-    return os.environ.get("VISUAL") or os.environ.get("EDITOR") or "nano"
+    return os.environ.get("VISUAL") or os.environ.get("EDITOR") or DEFAULT_EDITOR

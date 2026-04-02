@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from conftest import DummyCompletedProcess
+
 from fbox.config.editing import edit_config, get_config_path
 from fbox.config.files import ensure_config_exists
 from fbox.config.settings import AppConfig, get_config_file, get_state_file
@@ -93,8 +95,3 @@ def test_container_state_store_delete_and_invalid_extra_mounts(tmp_path: Path) -
 
     assert loaded[0].extra_mounts == []
     assert store.load() == []
-
-
-class DummyCompletedProcess:
-    def __init__(self, returncode: int) -> None:
-        self.returncode = returncode
