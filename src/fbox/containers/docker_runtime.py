@@ -132,6 +132,7 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         "no-new-privileges",
         "--tmpfs",
         build_tmpfs_spec(config.container_tmpfs_size),
+        *build_build_tmpfs_args(config.build_tmpfs),
         "--workdir",
         "/workspace",
         *build_user_args(config),
@@ -152,6 +153,12 @@ def build_resource_args(config: AppConfig) -> list[str]:
     if config.pids_limit > 0:
         args.extend(["--pids-limit", str(config.pids_limit)])
     return args
+
+
+def build_build_tmpfs_args(build_tmpfs: str) -> list[str]:
+    if not build_tmpfs:
+        return []
+    return ["--tmpfs", build_tmpfs]
 
 
 def build_tmpfs_spec(container_tmpfs_size: str) -> str:

@@ -12,6 +12,7 @@ root_mode = "root"
 extra_mounts_readonly = true
 workspace_readonly = false
 container_tmpfs_size = ""
+build_tmpfs = "/build-tmp:rw,exec,nosuid"  # leer = deaktiviert
 memory_limit = ""              # z.B. "4g", "" = kein Limit
 pids_limit = 0                 # 0 = kein Limit
 editor_command = "code --wait"

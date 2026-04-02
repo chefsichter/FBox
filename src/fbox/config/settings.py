@@ -58,6 +58,7 @@ class AppConfig:
     extra_mounts_readonly: bool = True
     workspace_readonly: bool = False
     container_tmpfs_size: str = ""
+    build_tmpfs: str = "/build-tmp:rw,exec,nosuid"
     memory_limit: str = ""
     pids_limit: int = 0
     extra_flags: list = field(default_factory=list)
@@ -103,6 +104,7 @@ def _config_from_dict(payload: dict) -> AppConfig:
         container_tmpfs_size=str(
             payload.get("container_tmpfs_size", defaults.container_tmpfs_size)
         ),
+        build_tmpfs=str(payload.get("build_tmpfs", defaults.build_tmpfs)),
         memory_limit=str(payload.get("memory_limit", defaults.memory_limit)),
         pids_limit=int(payload.get("pids_limit", defaults.pids_limit)),
         extra_flags=list(payload.get("extra_flags", defaults.extra_flags)),
