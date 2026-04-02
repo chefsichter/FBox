@@ -85,60 +85,79 @@ def main() -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    parser = _build_parser()
+    raw = parser.parse_args()
+    return _resolve_positionals(parser, raw)
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="fbox",
-        description="Startet oder erstellt eine persistente Docker-Arbeitsbox.",
+        usage=(
+            "fbox [PFAD|NAME] [-i IMAGE]\n"
+            "       fbox ls\n"
+            "       fbox rm ID"
+        ),
+        description="Persistente Docker-Arbeitsboxen verwalten.",
         epilog=(
-            "Beispiele:\n"
-            "  fbox\n"
-            "  fbox /pfad/zum/projekt\n"
-            "  fbox mein-container\n"
-            "  fbox --ls\n"
-            "  fbox --rm 2\n"
-            "  fbox --debug"
+            "Befehle:\n"
+            "  fbox [PFAD|NAME]      Container starten oder neu erstellen\n"
+            "  fbox ls               Alle bekannten Container auflisten\n"
+            "  fbox rm ID            Container nach ID aus 'fbox ls' loeschen\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
-    parser.add_argument("target", nargs="?", help="Pfad oder bestehender fbox-Name")
-    parser.add_argument(
-        "-i",
-        "--image",
-        default=None,
-        help="Docker-Image fuer neue Container. Default: ubuntu:24.04",
+    parser.add_argument("words", nargs="*", help=argparse.SUPPRESS)
+    opts = parser.add_argument_group("Optionen")
+    opts.add_argument(
+        "-h", "--help", action="help", default=argparse.SUPPRESS,
+        help="Diese Hilfe anzeigen",
     )
-    parser.add_argument(
-        "-c",
-        "--config",
-        action="store_true",
-        help="Oeffnet die globale fbox-Konfiguration im Editor.",
+    opts.add_argument(
+        "-i", "--image", default=None, metavar="IMAGE",
+        help="Docker-Image fuer neue Container (default: ubuntu:24.04)",
     )
-    parser.add_argument(
-        "-cpath",
-        "--print-config-path",
-        action="store_true",
-        help="Gibt den Pfad zur globalen fbox-Konfiguration aus.",
+    opts.add_argument(
+        "-c", "--config", action="store_true",
+        help="Konfiguration im Editor oeffnen",
     )
-    parser.add_argument(
-        "-ls",
-        "--ls",
-        action="store_true",
-        help="Listet alle gespeicherten fbox-Container auf.",
+    opts.add_argument(
+        "-d", "--debug", action="store_true",
+        help="Diagnose-Informationen anzeigen",
     )
-    parser.add_argument(
-        "-d",
-        "--debug",
-        action="store_true",
-        help="Zeigt Konfiguration, Pfade und bekannten Container-Zustand an.",
-    )
-    parser.add_argument(
-        "-rm",
-        "--rm",
-        type=int,
-        default=None,
-        metavar="ID",
-        help="Loescht den Container mit der ID aus `fbox --ls`.",
-    )
-    return parser.parse_args()
+    opts.add_argument("--print-config-path", action="store_true",
+                      help=argparse.SUPPRESS)
+    return parser
+
+
+def _resolve_positionals(
+    parser: argparse.ArgumentParser,
+    raw: argparse.Namespace,
+) -> argparse.Namespace:
+    words: list[str] = raw.words
+    del raw.words
+    raw.target = None
+    raw.ls = False
+    raw.rm = None
+
+    if not words:
+        pass
+    elif words == ["ls"]:
+        raw.ls = True
+    elif words[0] == "rm":
+        if len(words) < 2:
+            parser.error("rm: ID fehlt.  Verwendung: fbox rm ID")
+        try:
+            raw.rm = int(words[1])
+        except ValueError:
+            parser.error(f"rm: ID muss eine Zahl sein, nicht '{words[1]}'")
+    elif len(words) == 1:
+        raw.target = words[0]
+    else:
+        parser.error(f"Unbekannte Argumente: {' '.join(words)}")
+
+    return raw
 
 
 def maybe_handle_config_flags(
