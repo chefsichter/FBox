@@ -1,41 +1,41 @@
 # fbox
 
-`fbox` startet oder erstellt pro Projektverzeichnis einen persistenten Docker-Container.
+`fbox` startet oder erstellt pro Projektverzeichnis einen persistenten Docker-Container mit sicheren Mount-Defaults und editierbarer globaler Konfiguration.
 
-## Installation
+## Quick Start
 
 ```bash
-python3 -m pip install -e .
+cd /home/chefsichter/Dokumente/fbox
+./install_ubuntu.sh
 ```
 
-Danach ist der Befehl verfuegbar:
+Danach ist `fbox` global verfuegbar:
 
 ```bash
-fbox <pfad>
 fbox
+fbox <pfad>
 fbox <container-name>
 ```
 
-Wenn kein Pfad angegeben wird, nutzt `fbox` das aktuelle Verzeichnis.
+## What The Installer Does
 
-## Aktuelles Verhalten
+- fragt die wichtigsten Sicherheits- und Laufzeit-Defaults ab
+- erstellt `~/.config/fbox/config.toml`
+- erstellt eine repo-lokale `.venv`
+- installiert das Paket editable in diese `.venv`
+- legt einen globalen Wrapper an, standardmaessig `~/.local/bin/fbox`
 
-- Beim ersten Start fuer ein Verzeichnis fragt `fbox` nach dem Container-Namen.
-- Optional koennen weitere Verzeichnisse gemountet werden.
-- Optional kann per `--image` ein anderes Docker-Image gesetzt werden, Standard ist `ubuntu:24.04`.
-- Das Projekt wird nach `/workspace` gemountet.
-- Weitere Mounts landen unter `/extra/<ordnername>`.
-- Der Container bleibt erhalten und wird beim naechsten Aufruf wiederverwendet.
+Dadurch bleibt der Root-Folder klein, die Installation ist lokal gekapselt, und Aenderungen im Repo wirken sofort beim naechsten `fbox`-Start.
 
-## Sicherheits-Defaults
+## Config
 
-- Es werden nur explizit angegebene Verzeichnisse gemountet.
-- Es wird kein Home-Verzeichnis automatisch freigegeben.
-- Der Container startet mit `--cap-drop ALL` und `no-new-privileges`.
-- Der Container bekommt standardmaessig kein Netzwerk.
-- `/tmp` wird als eigenes `tmpfs` bereitgestellt.
+- Template: [fbox.example.toml](/home/chefsichter/Dokumente/fbox/config/fbox.example.toml)
+- Aktive Datei: `~/.config/fbox/config.toml`
+- Bearbeiten: `fbox --config`
+- Pfad anzeigen: `fbox --print-config-path`
 
-## Noch offen
+## Docs
 
-Die erste Version ist absichtlich minimal. Fuer einen haerteren Sandbox-Modus sollten als Naechstes
-Netzwerk-, GPU-, User- und Paketinstallations-Regeln festgelegt werden.
+- Architektur: [architecture.md](/home/chefsichter/Dokumente/fbox/docs/architecture.md)
+- Nutzung: [usage.md](/home/chefsichter/Dokumente/fbox/docs/usage.md)
+- FAQ: [faq.md](/home/chefsichter/Dokumente/fbox/docs/faq.md)

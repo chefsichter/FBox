@@ -1,1 +1,0 @@
-"""fbox CLI package."""

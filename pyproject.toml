@@ -9,11 +9,40 @@ description = "Persistent Docker workboxes with strict mount defaults."
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+  "black>=24.10.0",
+  "mypy>=1.15.0",
+  "pytest>=8.3.5",
+  "pytest-cov>=6.1.1",
+  "ruff>=0.11.8",
+]
+
 [project.scripts]
-fbox = "fbox_cli.main:main"
+fbox = "fbox.cli.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=src/fbox --cov-report=term-missing"
+testpaths = ["tests"]
