@@ -31,7 +31,11 @@ from fbox.config.settings import (
     get_config_file,
     get_state_file,
 )
-from fbox.containers.docker_runtime import container_exists, container_is_running
+from fbox.containers.docker_runtime import (
+    build_create_args,
+    container_exists,
+    container_is_running,
+)
 from fbox.containers.models import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
@@ -101,6 +105,19 @@ def print_debug_report(
         _row("status", status, width=10)
         _row("image", record.image, width=10)
         _row("project", record.project_path, width=10)
+
+    _section("docker create (preview)")
+    project_path = Path.cwd().resolve()
+    preview_record = ContainerRecord(
+        name="<name>",
+        project_path=str(project_path),
+        image=config.default_image,
+        container_id=None,
+        extra_mounts=[],
+        extra_mounts_readonly=config.extra_mounts_readonly,
+    )
+    args = ["docker"] + build_create_args(config, preview_record)
+    print("  " + " \\\n    ".join(args))
 
 
 def print_container_list(store: ContainerStateStore) -> None:
