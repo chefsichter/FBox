@@ -59,7 +59,8 @@ def main() -> None:
     store = ContainerStateStore()
     try:
         ensure_config_exists()
-        config = load_config()
+        profile = getattr(args, "profile", None)
+        config = load_config(profile=profile)
         flag_exit_code = maybe_handle_config_flags(args, config, store)
         if flag_exit_code is not None:
             raise SystemExit(flag_exit_code)
@@ -96,16 +97,22 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="fbox",
         usage=(
-            "fbox [PFAD|NAME] [-i IMAGE]\n"
-            "       fbox ls | inspect ID | rm ID"
+            "fbox [PFAD|NAME] [-i IMAGE] [-p PROFIL]\n"
+            "       fbox ls | inspect ID | rm ID\n"
+            "       fbox profile ls | default NAME | new | edit NAME | rm NAME"
         ),
         description="Persistente Docker-Arbeitsboxen verwalten.",
         epilog=(
             "Befehle:\n"
-            "  fbox [PFAD|NAME]      Container starten oder neu erstellen\n"
-            "  fbox ls               Alle bekannten Container auflisten\n"
-            "  fbox inspect ID       Details + exakte Create-Args anzeigen\n"
-            "  fbox rm ID            Container nach ID aus 'fbox ls' loeschen\n"
+            "  fbox [PFAD|NAME]           Container starten oder neu erstellen\n"
+            "  fbox ls                    Alle bekannten Container auflisten\n"
+            "  fbox inspect ID            Details + exakte Create-Args anzeigen\n"
+            "  fbox rm ID                 Container nach ID aus 'fbox ls' loeschen\n"
+            "  fbox profile ls            Profile auflisten + Standard anzeigen\n"
+            "  fbox profile default NAME  Standard-Profil setzen (none = keins)\n"
+            "  fbox profile new           Neues Profil interaktiv erstellen\n"
+            "  fbox profile edit NAME     Bestehendes Profil neu konfigurieren\n"
+            "  fbox profile rm NAME       Profil loeschen\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
@@ -119,6 +126,10 @@ def _build_parser() -> argparse.ArgumentParser:
     opts.add_argument(
         "-i", "--image", default=None, metavar="IMAGE",
         help="Docker-Image fuer neue Container (default: ubuntu:24.04)",
+    )
+    opts.add_argument(
+        "-p", "--profile", default=None, metavar="PROFIL",
+        help="Benanntes Profil verwenden (none = kein Profil)",
     )
     opts.add_argument(
         "-c", "--config", action="store_true",
@@ -143,11 +154,32 @@ def _resolve_positionals(
     raw.ls = False
     raw.rm = None
     raw.inspect = None
+    raw.profile_cmd = None
 
     if not words:
         pass
     elif words == ["ls"]:
         raw.ls = True
+    elif words[0] == "profile":
+        sub = words[1:]
+        if not sub or sub == ["ls"]:
+            raw.profile_cmd = ("ls",)
+        elif sub[0] == "default":
+            if len(sub) < 2:
+                parser.error("profile default: NAME fehlt")
+            raw.profile_cmd = ("default", sub[1])
+        elif sub == ["new"]:
+            raw.profile_cmd = ("new",)
+        elif sub[0] == "edit":
+            if len(sub) < 2:
+                parser.error("profile edit: NAME fehlt")
+            raw.profile_cmd = ("edit", sub[1])
+        elif sub[0] == "rm":
+            if len(sub) < 2:
+                parser.error("profile rm: NAME fehlt")
+            raw.profile_cmd = ("rm", sub[1])
+        else:
+            parser.error(f"Unbekannter profile-Befehl: {' '.join(sub)}")
     elif words[0] in {"rm", "inspect"}:
         cmd = words[0]
         if len(words) < 2:
@@ -188,7 +220,33 @@ def maybe_handle_config_flags(
         return remove_container_by_id(store, args.rm)
     if args.inspect is not None:
         return print_container_inspect(store, args.inspect)
+    if getattr(args, "profile_cmd", None) is not None:
+        return _dispatch_profile_cmd(args.profile_cmd, config)
     return None
+
+
+def _dispatch_profile_cmd(profile_cmd: tuple, config: AppConfig) -> int:
+    from fbox.cli.profile_commands import (
+        cmd_profile_edit,
+        cmd_profile_ls,
+        cmd_profile_new,
+        cmd_profile_rm,
+        cmd_profile_set_default,
+    )
+    from fbox.config.settings import get_config_file
+    config_path = get_config_file()
+    verb = profile_cmd[0]
+    if verb == "ls":
+        return cmd_profile_ls(config_path)
+    if verb == "default":
+        return cmd_profile_set_default(config_path, profile_cmd[1])
+    if verb == "new":
+        return cmd_profile_new(config_path, config)
+    if verb == "edit":
+        return cmd_profile_edit(config_path, profile_cmd[1], config)
+    if verb == "rm":
+        return cmd_profile_rm(config_path, profile_cmd[1])
+    return 1
 
 
 def remove_container_by_id(store: ContainerStateStore, container_id: int) -> int:

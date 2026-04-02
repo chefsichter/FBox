@@ -28,6 +28,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fbox.config.settings import AppConfig
+
 
 def ask(prompt: str, default: str) -> str:
     try:
@@ -97,6 +99,13 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
             "Groesse von /tmp im Container (leer = unbegrenzt)",
             "",
         ),
+        "memory_limit": ask(
+            "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
+            "",
+        ),
+        "pids_limit": int(
+            ask("PID-Limit fuer Container (0 = unbegrenzt)", "0")
+        ),
         "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
         "install_wrapper_path": ask(
             "Pfad fuer den globalen `fbox`-Starter",
@@ -138,7 +147,7 @@ def choose_install_action(has_existing_installation: bool) -> str:
         print("Bitte install/reinstall/uninstall/abort oder i/r/u/a eingeben.")
 
 
-def render_config_toml(values: dict[str, str | bool]) -> str:
+def render_config_toml(values: dict[str, str | bool | int]) -> str:
     lines = [
         "# fbox runtime defaults",
         "# Diese Datei kannst du spaeter mit `fbox --config` bearbeiten.",
@@ -149,8 +158,76 @@ def render_config_toml(values: dict[str, str | bool]) -> str:
             rendered_value = "true"
         elif value is False:
             rendered_value = "false"
+        elif isinstance(value, int):
+            rendered_value = str(value)
         else:
             rendered_value = f'"{value}"'
         lines.append(f"{key} = {rendered_value}")
     lines.append("")
     return "\n".join(lines)
+
+
+def build_profile_interactively(name: str, base: AppConfig) -> dict[str, object]:
+    """Ask profile configuration questions and return only the overriding fields."""
+    questions: dict[str, object] = {
+        "default_image": ask(
+            "Docker-Image fuer neue Container",
+            base.default_image,
+        ),
+        "default_shell": ask(
+            "Shell fuer `docker exec`",
+            base.default_shell,
+        ),
+        "default_network": ask_choice(
+            "Netzwerk-Standard fuer neue Container",
+            base.default_network,
+            ["none", "bridge", "host"],
+        ),
+        "gpu_vendor": ask_choice(
+            "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
+            base.gpu_vendor,
+            ["none", "nvidia", "amd"],
+        ),
+        "root_mode": ask_choice(
+            "Container standardmaessig als root oder mit deinem Host-User starten",
+            base.root_mode,
+            ["root", "host-user"],
+        ),
+        "extra_mounts_readonly": ask_bool(
+            "Zusatz-Mounts standardmaessig read-only einhaengen",
+            base.extra_mounts_readonly,
+        ),
+        "workspace_readonly": ask_bool(
+            "Workspace read-only einhaengen",
+            base.workspace_readonly,
+        ),
+        "container_tmpfs_size": ask(
+            "Groesse von /tmp im Container (leer = unbegrenzt)",
+            base.container_tmpfs_size,
+        ),
+        "memory_limit": ask(
+            "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
+            base.memory_limit,
+        ),
+        "pids_limit": int(
+            ask("PID-Limit fuer Container (0 = unbegrenzt)", str(base.pids_limit))
+        ),
+    }
+    # Return only fields that differ from base
+    overrides: dict[str, object] = {}
+    base_dict = {
+        "default_image": base.default_image,
+        "default_shell": base.default_shell,
+        "default_network": base.default_network,
+        "gpu_vendor": base.gpu_vendor,
+        "root_mode": base.root_mode,
+        "extra_mounts_readonly": base.extra_mounts_readonly,
+        "workspace_readonly": base.workspace_readonly,
+        "container_tmpfs_size": base.container_tmpfs_size,
+        "memory_limit": base.memory_limit,
+        "pids_limit": base.pids_limit,
+    }
+    for key, value in questions.items():
+        if value != base_dict[key]:
+            overrides[key] = value
+    return overrides

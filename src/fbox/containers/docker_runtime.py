@@ -124,11 +124,21 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         "/workspace",
         *build_user_args(config),
         *build_gpu_args(config),
+        *build_resource_args(config),
         *mounts,
         record.image,
         "sleep",
         "infinity",
     ]
+
+
+def build_resource_args(config: AppConfig) -> list[str]:
+    args = []
+    if config.memory_limit:
+        args.extend(["--memory", config.memory_limit])
+    if config.pids_limit > 0:
+        args.extend(["--pids-limit", str(config.pids_limit)])
+    return args
 
 
 def build_tmpfs_spec(container_tmpfs_size: str) -> str:

@@ -26,6 +26,11 @@ import shutil
 import sys
 from pathlib import Path
 
+from fbox.config.profile_store import (
+    get_default_profile_name,
+    get_profile_names,
+    get_profile_overrides,
+)
 from fbox.config.settings import (
     EXAMPLE_CONFIG_PATH,
     AppConfig,
@@ -116,6 +121,20 @@ def print_debug_report(
     _row("workspace_readonly", config.workspace_readonly)
     _row("container_tmpfs_size", config.container_tmpfs_size or "<unlimited>")
     _row("editor_command", config.editor_command or "<default>")
+
+    profile_names = get_profile_names(config_path)
+    default_profile = get_default_profile_name(config_path)
+    _section(f"Profiles ({len(profile_names)})")
+    if not profile_names:
+        print("  <none>")
+    for name in profile_names:
+        marker = " (default)" if name == default_profile else ""
+        overrides = get_profile_overrides(config_path, name)
+        print(f"  [{name}]{marker}")
+        for key, value in overrides.items():
+            _row(key, value, width=28)
+    if not default_profile:
+        _row("default_profile", "<none>", width=28)
 
     indexed_records = get_indexed_records(store)
     _section(f"Containers ({len(indexed_records)})")

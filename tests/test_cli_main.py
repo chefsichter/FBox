@@ -201,7 +201,7 @@ def test_main_exits_with_error_when_target_unknown(monkeypatch) -> None:
     monkeypatch.setattr(
         cli_main, "ensure_config_exists", lambda: Path("/tmp/config.toml")
     )
-    monkeypatch.setattr(cli_main, "load_config", lambda: AppConfig())
+    monkeypatch.setattr(cli_main, "load_config", lambda **kwargs: AppConfig())
     monkeypatch.setattr(cli_main, "require_docker", lambda: None)
     monkeypatch.setattr(cli_main, "resolve_target", lambda target: (None, "missing"))
     monkeypatch.setattr(cli_main, "reuse_existing_container", lambda *args: None)
