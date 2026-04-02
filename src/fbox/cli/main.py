@@ -79,6 +79,9 @@ def main() -> None:
     except (DockerRuntimeError, ValueError) as error:
         print(f"fbox: {error}", file=sys.stderr)
         raise SystemExit(1) from error
+    except KeyboardInterrupt:
+        print("\nAbgebrochen.", file=sys.stderr)
+        raise SystemExit(130)
 
 
 def parse_args() -> argparse.Namespace:
