@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from fbox.config.settings import AppConfig
-from fbox.containers.docker_runtime import build_create_args, build_mount_spec
+from fbox.containers.docker_runtime import (
+    build_create_args,
+    build_mount_spec,
+    build_tmpfs_spec,
+)
 from fbox.containers.models import ContainerRecord
 
 
@@ -29,3 +33,7 @@ def test_build_create_args_include_gpu_and_host_user_settings(monkeypatch) -> No
     assert "--user" in args
     assert "1000:1000" in args
     assert any("/extra/data" in item for item in args)
+
+
+def test_build_tmpfs_spec_omits_size_when_unlimited() -> None:
+    assert build_tmpfs_spec("") == "/tmp:rw,noexec,nosuid"

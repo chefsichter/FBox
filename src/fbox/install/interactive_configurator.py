@@ -75,7 +75,7 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
         "default_shell": ask("Shell fuer `docker exec`", "/bin/bash"),
         "default_network": ask_choice(
             "Netzwerk-Standard fuer neue Container",
-            "none",
+            "bridge",
             ["none", "bridge", "host"],
         ),
         "allow_all_gpus": ask_bool(
@@ -91,12 +91,12 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
             "Zusatz-Mounts standardmaessig read-only einhaengen",
             True,
         ),
-        "workspace_readonly": ask_bool(
-            f"Projekt-Mount {default_target} standardmaessig read-only einhaengen",
-            False,
+        "workspace_readonly": False,
+        "container_tmpfs_size": ask(
+            "Groesse von /tmp im Container (leer = unbegrenzt)",
+            "",
         ),
-        "container_tmpfs_size": ask("Groesse von /tmp im Container", "512m"),
-        "editor_command": ask("Editor fuer `fbox --config`", "nano"),
+        "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
         "install_wrapper_path": ask(
             "Pfad fuer den globalen `fbox`-Starter",
             "~/.local/bin/fbox",
@@ -104,6 +104,33 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
     }
     wrapper_path = str(values["install_wrapper_path"])
     return render_config_toml(values), wrapper_path
+
+
+def choose_install_action(has_existing_installation: bool) -> str:
+    if not has_existing_installation:
+        return "install"
+    shortcuts = {
+        "i": "install",
+        "r": "reinstall",
+        "u": "uninstall",
+        "a": "abort",
+    }
+    option_text = "install(i)/reinstall(r)/uninstall(u)/abort(a)"
+    while True:
+        try:
+            answer = input(
+                "Bestehende fbox-Installation erkannt. Aktion waehlen "
+                f"[{option_text}, default reinstall]: "
+            ).strip().lower()
+        except EOFError:
+            return "reinstall"
+        if not answer:
+            return "reinstall"
+        if answer in {"install", "reinstall", "uninstall", "abort"}:
+            return answer
+        if answer in shortcuts:
+            return shortcuts[answer]
+        print("Bitte install/reinstall/uninstall/abort oder i/r/u/a eingeben.")
 
 
 def render_config_toml(values: dict[str, str | bool]) -> str:

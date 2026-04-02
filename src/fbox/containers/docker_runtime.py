@@ -118,7 +118,7 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         "--security-opt",
         "no-new-privileges",
         "--tmpfs",
-        f"/tmp:rw,noexec,nosuid,size={config.container_tmpfs_size}",
+        build_tmpfs_spec(config.container_tmpfs_size),
         "--workdir",
         "/workspace",
         *build_user_args(config),
@@ -128,6 +128,13 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         "sleep",
         "infinity",
     ]
+
+
+def build_tmpfs_spec(container_tmpfs_size: str) -> str:
+    base_spec = "/tmp:rw,noexec,nosuid"
+    if not container_tmpfs_size:
+        return base_spec
+    return f"{base_spec},size={container_tmpfs_size}"
 
 
 def build_mount_args(

@@ -3,11 +3,11 @@
 
 default_image = "ubuntu:24.04"
 default_shell = "/bin/bash"
-default_network = "none"
+default_network = "bridge"
 allow_all_gpus = true
 root_mode = "root"
 extra_mounts_readonly = true
 workspace_readonly = false
-container_tmpfs_size = "512m"
-editor_command = "nano"
+container_tmpfs_size = ""
+editor_command = "code --wait"
 install_wrapper_path = "~/.local/bin/fbox"

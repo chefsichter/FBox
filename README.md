@@ -9,6 +9,12 @@ cd /home/chefsichter/Dokumente/fbox
 ./install_ubuntu.sh
 ```
 
+Entfernen:
+
+```bash
+./uninstall_ubuntu.sh
+```
+
 Danach ist `fbox` global verfuegbar:
 
 ```bash
@@ -20,6 +26,7 @@ fbox <container-name>
 ## What The Installer Does
 
 - fragt die wichtigsten Sicherheits- und Laufzeit-Defaults ab
+- erkennt bestehende Installationen und bietet `install`, `reinstall`, `uninstall` oder `abort`
 - erstellt `~/.config/fbox/config.toml`
 - erstellt eine repo-lokale `.venv`
 - installiert das Paket editable in diese `.venv`

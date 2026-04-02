@@ -4,11 +4,12 @@ import pytest
 from conftest import DummyCompletedProcess
 
 from fbox.containers.target_resolution import resolve_target, validate_mounts
+from fbox.install.cleanup import uninstall_fbox
 from fbox.install.installer_main import main as installer_main
 from fbox.install.venv_setup import (
     create_virtualenv,
-    install_editable_package,
     install_local_venv,
+    installation_exists,
     write_wrapper_script,
 )
 
@@ -44,9 +45,7 @@ def test_validate_mounts_resolves_directories(tmp_path: Path) -> None:
     assert mounts == [str(extra_mount.resolve())]
 
 
-def test_create_virtualenv_and_install_editable_raise_on_failure(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_create_virtualenv_raises_on_failure(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         "subprocess.run",
         lambda *args, **kwargs: DummyCompletedProcess(1),
@@ -54,9 +53,6 @@ def test_create_virtualenv_and_install_editable_raise_on_failure(
 
     with pytest.raises(RuntimeError):
         create_virtualenv(tmp_path / ".venv")
-
-    with pytest.raises(RuntimeError):
-        install_editable_package(tmp_path / ".venv", tmp_path)
 
 
 def test_write_wrapper_script_creates_executable(tmp_path: Path) -> None:
@@ -69,6 +65,7 @@ def test_write_wrapper_script_creates_executable(tmp_path: Path) -> None:
     assert wrapper_path.exists()
     assert wrapper_path.stat().st_mode & 0o111
     assert "python" in wrapper_path.read_text(encoding="utf-8")
+    assert 'PYTHONPATH="$REPO_ROOT/src' in wrapper_path.read_text(encoding="utf-8")
 
 
 def test_install_local_venv_calls_all_steps(monkeypatch, tmp_path: Path) -> None:
@@ -78,10 +75,6 @@ def test_install_local_venv_calls_all_steps(monkeypatch, tmp_path: Path) -> None
         lambda path: calls.append(f"venv:{path}"),
     )
     monkeypatch.setattr(
-        "fbox.install.venv_setup.install_editable_package",
-        lambda venv, repo: calls.append(f"editable:{venv}:{repo}"),
-    )
-    monkeypatch.setattr(
         "fbox.install.venv_setup.write_wrapper_script",
         lambda venv, repo, wrapper: calls.append(f"wrapper:{wrapper}"),
     )
@@ -89,16 +82,38 @@ def test_install_local_venv_calls_all_steps(monkeypatch, tmp_path: Path) -> None
     install_local_venv(tmp_path, "~/.local/bin/fbox")
 
     assert calls[0].startswith("venv:")
-    assert calls[1].startswith("editable:")
-    assert calls[2] == "wrapper:/root/.local/bin/fbox" or calls[2].startswith(
+    assert calls[1] == "wrapper:/root/.local/bin/fbox" or calls[1].startswith(
         "wrapper:"
     )
+
+
+def test_installation_exists_checks_repo_and_config(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    config_path = tmp_path / "config.toml"
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    assert installation_exists(repo_root, config_path) is False
+
+    (repo_root / ".venv").mkdir()
+    assert installation_exists(repo_root, config_path) is True
 
 
 def test_installer_main_writes_config_and_installs_wrapper(
     monkeypatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setattr(
+        "fbox.install.installer_main.choose_install_action",
+        lambda exists: "install",
+    )
+    monkeypatch.setattr(
+        "fbox.install.installer_main.installation_exists",
+        lambda repo_root, config_path: False,
+    )
     monkeypatch.setattr(
         "fbox.install.installer_main.build_config_interactively",
         lambda path: ('default_image = "ubuntu:24.04"\n', "~/.local/bin/fbox"),
@@ -114,3 +129,63 @@ def test_installer_main_writes_config_and_installs_wrapper(
     config_path = tmp_path / "config" / "fbox" / "config.toml"
     assert config_path.exists()
     assert install_calls
+
+
+def test_installer_main_uninstalls_when_selected(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    uninstall_calls: list[tuple[Path, Path, bool]] = []
+    monkeypatch.setattr(
+        "fbox.install.installer_main.choose_install_action",
+        lambda exists: "uninstall",
+    )
+    monkeypatch.setattr(
+        "fbox.install.installer_main.installation_exists",
+        lambda repo_root, config_path: True,
+    )
+    monkeypatch.setattr(
+        "fbox.install.installer_main.uninstall_fbox",
+        lambda repo_root, wrapper_path, remove_containers: uninstall_calls.append(
+            (repo_root, wrapper_path, remove_containers)
+        ),
+    )
+    monkeypatch.setattr(
+        "fbox.install.installer_main.get_wrapper_path",
+        lambda config_path: Path("/tmp/fbox-wrapper"),
+    )
+
+    installer_main()
+
+    assert uninstall_calls
+    assert uninstall_calls[0][2] is True
+
+
+def test_uninstall_fbox_removes_artifacts(monkeypatch, tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / ".venv").mkdir()
+    wrapper_path = tmp_path / "bin" / "fbox"
+    wrapper_path.parent.mkdir(parents=True)
+    wrapper_path.write_text("", encoding="utf-8")
+    config_dir = tmp_path / "config-home"
+    state_dir = tmp_path / "state-home"
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_dir))
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_dir))
+    config_path = config_dir / "fbox" / "config.toml"
+    state_path = state_dir / "fbox" / "containers.json"
+    config_path.parent.mkdir(parents=True)
+    state_path.parent.mkdir(parents=True)
+    config_path.write_text("", encoding="utf-8")
+    state_path.write_text("", encoding="utf-8")
+    remove_calls: list[bool] = []
+    monkeypatch.setattr(
+        "fbox.install.cleanup.remove_managed_containers",
+        lambda: remove_calls.append(True),
+    )
+
+    uninstall_fbox(repo_root, wrapper_path, remove_containers=True)
+
+    assert remove_calls == [True]
+    assert not wrapper_path.exists()
+    assert not config_path.exists()
+    assert not state_path.exists()
+    assert not (repo_root / ".venv").exists()

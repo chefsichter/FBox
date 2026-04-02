@@ -36,7 +36,7 @@ CONFIG_FILE_NAME = "config.toml"
 STATE_FILE_NAME = "containers.json"
 DEFAULT_IMAGE = "ubuntu:24.04"
 DEFAULT_SHELL = "/bin/bash"
-DEFAULT_EDITOR = "nano"
+DEFAULT_EDITOR = "code --wait"
 DEFAULT_CONTAINER_PREFIX = "fbox"
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[3] / "config" / "fbox.example.toml"
@@ -47,12 +47,12 @@ EXAMPLE_CONFIG_PATH = (
 class AppConfig:
     default_image: str = DEFAULT_IMAGE
     default_shell: str = DEFAULT_SHELL
-    default_network: str = "none"
+    default_network: str = "bridge"
     allow_all_gpus: bool = True
     root_mode: str = "root"
     extra_mounts_readonly: bool = True
     workspace_readonly: bool = False
-    container_tmpfs_size: str = "512m"
+    container_tmpfs_size: str = ""
     editor_command: str = ""
     install_wrapper_path: str = "~/.local/bin/fbox"
 
@@ -86,12 +86,12 @@ def load_config(config_path: Path | None = None) -> AppConfig:
     return AppConfig(
         default_image=str(payload.get("default_image", DEFAULT_IMAGE)),
         default_shell=str(payload.get("default_shell", DEFAULT_SHELL)),
-        default_network=str(payload.get("default_network", "none")),
+        default_network=str(payload.get("default_network", "bridge")),
         allow_all_gpus=bool(payload.get("allow_all_gpus", True)),
         root_mode=str(payload.get("root_mode", "root")),
         extra_mounts_readonly=bool(payload.get("extra_mounts_readonly", True)),
         workspace_readonly=bool(payload.get("workspace_readonly", False)),
-        container_tmpfs_size=str(payload.get("container_tmpfs_size", "512m")),
+        container_tmpfs_size=str(payload.get("container_tmpfs_size", "")),
         editor_command=str(payload.get("editor_command", "")),
         install_wrapper_path=str(
             payload.get("install_wrapper_path", "~/.local/bin/fbox")
