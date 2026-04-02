@@ -65,6 +65,17 @@ def ask_bool(prompt: str, default: bool) -> bool:
         print("Bitte y oder n eingeben.")
 
 
+def ask_flags(prompt: str, default: list) -> list:
+    default_str = " ".join(default)
+    try:
+        answer = input(f"{prompt} [{default_str or 'keine'}]: ").strip()
+    except EOFError:
+        return default
+    if not answer:
+        return default
+    return answer.split()
+
+
 def ask_choice(prompt: str, default: str, options: list[str]) -> str:
     option_text = "/".join(options)
     while True:
@@ -94,6 +105,7 @@ def _values_from_config(d: AppConfig) -> dict[str, object]:
         "container_tmpfs_size": d.container_tmpfs_size,
         "memory_limit": d.memory_limit,
         "pids_limit": d.pids_limit,
+        "extra_flags": d.extra_flags,
         "editor_command": "code --wait",
         "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
     }
@@ -142,6 +154,10 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
             ),
             "pids_limit": int(
                 ask("PID-Limit fuer Container (0 = unbegrenzt)", str(d.pids_limit))
+            ),
+            "extra_flags": ask_flags(
+                "Zusaetzliche Docker-Flags (z.B. --cap-add CHOWN --cap-add FOWNER)",
+                d.extra_flags,
             ),
             "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
             "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
@@ -289,8 +305,18 @@ def render_config_toml(values: dict[str, str | bool | int]) -> str:
     return "\n".join(lines)
 
 
-def build_profile_interactively(name: str, base: AppConfig) -> dict[str, object]:
-    """Ask profile configuration questions and return only the overriding fields."""
+def build_profile_interactively(
+    name: str, base: AppConfig, compare_base: AppConfig | None = None
+) -> dict[str, object]:
+    """Ask profile configuration questions and return only the overriding fields.
+
+    base        – used as defaults for the interactive questions (what the user sees)
+    compare_base – used for comparison to determine which fields to save as overrides;
+                   defaults to base. For editing, pass the original base config (without
+                   profile applied) so that all profile-specific values are preserved.
+    """
+    if compare_base is None:
+        compare_base = base
     questions: dict[str, object] = {
         "default_image": ask(
             "Docker-Image fuer neue Container",
@@ -334,20 +360,25 @@ def build_profile_interactively(name: str, base: AppConfig) -> dict[str, object]
         "pids_limit": int(
             ask("PID-Limit fuer Container (0 = unbegrenzt)", str(base.pids_limit))
         ),
+        "extra_flags": ask_flags(
+            "Zusaetzliche Docker-Flags (z.B. --cap-add CHOWN --cap-add FOWNER)",
+            base.extra_flags,
+        ),
     }
-    # Return only fields that differ from base
+    # Return only fields that differ from compare_base (original base without profile)
     overrides: dict[str, object] = {}
     base_dict = {
-        "default_image": base.default_image,
-        "default_shell": base.default_shell,
-        "default_network": base.default_network,
-        "gpu_vendor": base.gpu_vendor,
-        "root_mode": base.root_mode,
-        "extra_mounts_readonly": base.extra_mounts_readonly,
-        "workspace_readonly": base.workspace_readonly,
-        "container_tmpfs_size": base.container_tmpfs_size,
-        "memory_limit": base.memory_limit,
-        "pids_limit": base.pids_limit,
+        "default_image": compare_base.default_image,
+        "default_shell": compare_base.default_shell,
+        "default_network": compare_base.default_network,
+        "gpu_vendor": compare_base.gpu_vendor,
+        "root_mode": compare_base.root_mode,
+        "extra_mounts_readonly": compare_base.extra_mounts_readonly,
+        "workspace_readonly": compare_base.workspace_readonly,
+        "container_tmpfs_size": compare_base.container_tmpfs_size,
+        "memory_limit": compare_base.memory_limit,
+        "pids_limit": compare_base.pids_limit,
+        "extra_flags": compare_base.extra_flags,
     }
     for key, value in questions.items():
         if value != base_dict[key]:

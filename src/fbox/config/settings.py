@@ -60,6 +60,7 @@ class AppConfig:
     container_tmpfs_size: str = ""
     memory_limit: str = ""
     pids_limit: int = 0
+    extra_flags: list = field(default_factory=list)
     editor_command: str = ""
     install_wrapper_path: str = field(default_factory=lambda: DEFAULT_WRAPPER_PATH)
 
@@ -104,6 +105,7 @@ def _config_from_dict(payload: dict) -> AppConfig:
         ),
         memory_limit=str(payload.get("memory_limit", defaults.memory_limit)),
         pids_limit=int(payload.get("pids_limit", defaults.pids_limit)),
+        extra_flags=list(payload.get("extra_flags", defaults.extra_flags)),
         editor_command=str(payload.get("editor_command", defaults.editor_command)),
         install_wrapper_path=str(
             payload.get("install_wrapper_path", defaults.install_wrapper_path)

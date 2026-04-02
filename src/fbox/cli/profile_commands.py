@@ -119,7 +119,7 @@ def cmd_profile_edit(config_path: Path, pid_or_name: str, base_config: AppConfig
     from fbox.config.settings import _apply_overrides
     current_overrides = get_profile_overrides(config_path, name)
     effective_base = _apply_overrides(base_config, current_overrides)
-    overrides = build_profile_interactively(name, effective_base)
+    overrides = build_profile_interactively(name, effective_base, compare_base=base_config)
     upsert_profile(config_path, name, overrides)
     print(f"Profil '{name}' aktualisiert.")
     return 0

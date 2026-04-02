@@ -35,10 +35,12 @@ pids_limit = 512
 default_network = "bridge"
 root_mode = "root"
 memory_limit = "16g"
+extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]
 
-[profiles.amd]
+[profiles.amd-llm]
 default_image = "rocm/dev-ubuntu-24.04:latest"
 gpu_vendor = "amd"
 default_network = "bridge"
 root_mode = "root"
 memory_limit = "16g"
+extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]

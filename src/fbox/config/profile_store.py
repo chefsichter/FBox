@@ -96,6 +96,9 @@ def _render_value(value: object) -> str:
         return str(value)
     if isinstance(value, float):
         return str(value)
+    if isinstance(value, list):
+        items = ", ".join(_render_value(item) for item in value)
+        return f"[{items}]"
     # String
     escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
@@ -104,7 +107,7 @@ def _render_value(value: object) -> str:
 _PREVIEW_FIELDS = [
     "default_image", "default_shell", "default_network", "gpu_vendor",
     "root_mode", "extra_mounts_readonly", "workspace_readonly",
-    "container_tmpfs_size", "memory_limit", "pids_limit",
+    "container_tmpfs_size", "memory_limit", "pids_limit", "extra_flags",
 ]
 
 

@@ -137,6 +137,7 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         *build_user_args(config),
         *build_gpu_args(config),
         *build_resource_args(config),
+        *config.extra_flags,
         *mounts,
         record.image,
         "sleep",
