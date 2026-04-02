@@ -27,7 +27,7 @@ pids_limit = 512
 [profiles.bridge-sandbox]
 default_network = "bridge"
 root_mode = "host-user"
-workspace_readonly = true
+workspace_readonly = false
 memory_limit = "4g"
 pids_limit = 512
 
