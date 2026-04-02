@@ -27,8 +27,9 @@ Usage:
 from __future__ import annotations
 
 import os
+import sys
 import tomllib
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 APP_DIR_NAME = "fbox"
@@ -39,6 +40,9 @@ DEFAULT_SHELL = "/bin/bash"
 DEFAULT_EDITOR = "code --wait"
 DEFAULT_CONTAINER_PREFIX = "fbox"
 DEFAULT_PROFILE_KEY = "default_profile"
+DEFAULT_WRAPPER_PATH = (
+    "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
+)
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[3] / "config" / "fbox.example.toml"
 )
@@ -57,7 +61,7 @@ class AppConfig:
     memory_limit: str = ""
     pids_limit: int = 0
     editor_command: str = ""
-    install_wrapper_path: str = "~/.local/bin/fbox"
+    install_wrapper_path: str = field(default_factory=lambda: DEFAULT_WRAPPER_PATH)
 
     @property
     def run_as_root(self) -> bool:

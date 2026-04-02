@@ -1,38 +1,60 @@
-# 📦 fbox
+# fbox
 
-Persistente Docker-Arbeitsboxen — pro Projekt ein Container, sicher gemountet, global aufrufbar.
+Persistente Docker-Arbeitsboxen: pro Projekt ein Container, sicher gemountet und global aufrufbar.
 
-`fbox` startet einen bestehenden Container oder erstellt einen neuen — mit sicheren Mount-Defaults,
-editierbarer Konfiguration und AMD/NVIDIA GPU-Unterstützung.
+`fbox` startet einen bestehenden Container oder erstellt einen neuen, mit sicheren Mount-Defaults,
+editierbarer Konfiguration und AMD/NVIDIA-GPU-Unterstuetzung.
 
 ---
 
-## 🚀 Installation
+## Installation
+
+Linux / Ubuntu:
 
 ```bash
 cd /path/to/fbox
-./install_ubuntu.sh
+./scripts/install_ubuntu.sh
+```
+
+Windows PowerShell:
+
+```powershell
+cd C:\path\to\fbox
+.\scripts\install_windows.ps1
 ```
 
 Der Installer fragt interaktiv die wichtigsten Einstellungen ab und richtet alles ein:
 
-- ✅ `~/.config/fbox/config.toml` — globale Konfiguration
-- ✅ `.venv/` — repo-lokale virtuelle Umgebung
-- ✅ `~/.local/bin/fbox` — globaler Wrapper-Skript
+- `~/.config/fbox/config.toml` als globale Konfiguration
+- `.venv/` als repo-lokale virtuelle Umgebung
+- `~/.local/bin/fbox` als globales Wrapper-Skript
 
-Da der Wrapper auf das repo-lokale editable Install zeigt, werden Änderungen am Code sofort beim nächsten `fbox`-Aufruf wirksam.
+Da der Wrapper auf das repo-lokale editable Install zeigt, werden Aenderungen am Code sofort
+beim naechsten `fbox`-Aufruf wirksam.
+
+Hinweis fuer Windows:
+Das PowerShell-Skript startet nur den Python-Installer. Der erzeugte Wrapper-Pfad bleibt eine
+Einstellung aus der fbox-Konfiguration und ist derzeit weiterhin auf Unix-Pfade ausgerichtet.
 
 ### Entfernen
 
+Linux / Ubuntu:
+
 ```bash
-./uninstall_ubuntu.sh
+./scripts/uninstall_ubuntu.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\uninstall_windows.ps1
 ```
 
 ---
 
-## 🛠️ Verwendung
+## Verwendung
 
-```
+```text
 usage: fbox [PFAD|NAME] [-i IMAGE]
        fbox ls
        fbox rm ID
@@ -43,23 +65,23 @@ usage: fbox [PFAD|NAME] [-i IMAGE]
 ```bash
 fbox                        # aktuelles Verzeichnis als Projekt
 fbox /pfad/zum/projekt      # bestimmtes Verzeichnis
-fbox mein-container         # bekannten Container direkt öffnen
+fbox mein-container         # bekannten Container direkt oeffnen
 ```
 
 Beim ersten Mal wird nach einem Container-Namen und optionalen Extra-Mounts gefragt.
-Danach wird der Container bei jedem Aufruf direkt geöffnet.
+Danach wird der Container bei jedem Aufruf direkt geoeffnet.
 
 ### Container verwalten
 
 ```bash
 fbox ls                     # alle bekannten Container auflisten (mit ID)
-fbox rm 2                   # Container mit ID 2 löschen
+fbox rm 2                   # Container mit ID 2 loeschen
 ```
 
 ### Konfiguration
 
 ```bash
-fbox -c                     # Konfigurationsdatei im Editor öffnen
+fbox -c                     # Konfigurationsdatei im Editor oeffnen
 fbox -d                     # Diagnose: Pfade, Config, Container-Status, docker-create-Preview
 ```
 
@@ -67,14 +89,14 @@ fbox -d                     # Diagnose: Pfade, Config, Container-Status, docker-
 
 | Option | Beschreibung |
 |---|---|
-| `-i IMAGE` | Docker-Image für neue Container |
-| `-c, --config` | Konfiguration im Editor öffnen |
+| `-i IMAGE` | Docker-Image fuer neue Container |
+| `-c, --config` | Konfiguration im Editor oeffnen |
 | `-d, --debug` | Diagnose-Informationen anzeigen |
 | `-h, --help` | Hilfe anzeigen |
 
 ---
 
-## ⚙️ Konfiguration
+## Konfiguration
 
 Die aktive Konfiguration liegt unter `~/.config/fbox/config.toml`.
 
@@ -91,7 +113,7 @@ editor_command = "code --wait"
 install_wrapper_path = "~/.local/bin/fbox"
 ```
 
-### GPU-Unterstützung
+### GPU-Unterstuetzung
 
 | `gpu_vendor` | Effekt |
 |---|---|
@@ -103,81 +125,89 @@ install_wrapper_path = "~/.local/bin/fbox"
 
 | Pfad im Container | Quelle |
 |---|---|
-| `/workspace` | Projektverzeichnis (standardmäßig schreibbar) |
-| `/extra/<dirname>` | Zusatz-Mounts (standardmäßig read-only) |
+| `/workspace` | Projektverzeichnis (standardmaessig schreibbar) |
+| `/extra/<dirname>` | Zusatz-Mounts (standardmaessig read-only) |
 
 ---
 
-## 🔒 Sicherheits-Defaults
+## Sicherheits-Defaults
 
-Jeder Container wird mit diesen Einschränkungen erstellt:
+Jeder Container wird mit diesen Einschraenkungen erstellt:
 
-- `--cap-drop ALL` — alle Linux Capabilities entzogen
-- `--security-opt no-new-privileges` — keine Privilege-Escalation
-- `--tmpfs /tmp:rw,noexec,nosuid` — `/tmp` im RAM, nicht ausführbar
-- Netzwerk konfigurierbar (`bridge` / `none` / `host`)
+- `--cap-drop ALL` entzieht alle Linux Capabilities
+- `--security-opt no-new-privileges` verhindert Privilege Escalation
+- `--tmpfs /tmp:rw,noexec,nosuid` legt `/tmp` im RAM an und macht es nicht ausfuehrbar
+- Netzwerk ist konfigurierbar (`bridge` / `none` / `host`)
 
 ---
 
-## 🏗️ Architektur
+## Architektur
 
 ```text
 fbox/
-├─ install_ubuntu.sh
-├─ pyproject.toml
-├─ config/
-│  └─ fbox.example.toml
-├─ src/fbox/
-│  ├─ cli/              # Argument-Parsing, Prompts, Orchestrierung, Status-Views
-│  ├─ config/           # XDG-Pfade, TOML laden, Editor öffnen
-│  ├─ containers/       # Docker-Befehlsbau, Target-Auflösung
-│  ├─ install/          # Installer, venv-Setup, Wrapper-Skript
-│  └─ state/            # JSON-State für bekannte Container
-└─ tests/
+|-- scripts/
+|   |-- install_ubuntu.sh
+|   |-- uninstall_ubuntu.sh
+|   |-- install_windows.ps1
+|   `-- uninstall_windows.ps1
+|-- pyproject.toml
+|-- config/
+|   `-- fbox.example.toml
+|-- src/fbox/
+|   |-- cli/              # Argument-Parsing, Prompts, Orchestrierung, Status-Views
+|   |-- config/           # XDG-Pfade, TOML laden, Editor oeffnen
+|   |-- containers/       # Docker-Befehlsbau, Target-Aufloesung
+|   |-- install/          # Installer-Logik, venv-Setup, Wrapper-Erzeugung
+|   `-- state/            # JSON-State fuer bekannte Container
+`-- tests/
 ```
 
 ### Laufzeit-Ablauf
 
-```
+```text
 fbox starten
-   │
-   ├─▶ ls / rm / --config / --debug  →  direkt ausgeben und beenden
-   │
-   ▼
+   |
+   +--> ls / rm / --config / --debug  -> direkt ausgeben und beenden
+   |
+   v
 Config laden (~/.config/fbox/config.toml)
-   │
-   ▼
-Ziel auflösen (Pfad oder Container-Name)
-   │
-   ├─▶ bekannter Container gefunden  →  starten + Shell öffnen
-   │
-   ▼
+   |
+   v
+Ziel aufloesen (Pfad oder Container-Name)
+   |
+   +--> bekannter Container gefunden  -> starten + Shell oeffnen
+   |
+   v
 Name + Extra-Mounts abfragen
-   │
-   ▼
+   |
+   v
 docker create (mit Config-Flags)
-   │
-   ▼
-Container starten + Shell öffnen (docker exec -it)
+   |
+   v
+Container starten + Shell oeffnen (docker exec -it)
 ```
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Warum ein repo-lokales `.venv`?**
-Die Installation ist selbst-gekapselt. Der Wrapper zeigt auf den repo-lokalen Interpreter — kein Eingriff ins System-Python.
+Die Installation ist selbst gekapselt. Der Wrapper zeigt auf den repo-lokalen Interpreter,
+ohne Eingriff ins System-Python.
 
 **Warum editable install?**
-Änderungen im Repo wirken beim nächsten `fbox`-Aufruf sofort, ohne Neuinstallation.
+Aenderungen im Repo wirken beim naechsten `fbox`-Aufruf sofort, ohne Neuinstallation.
 
 **Warum sind Extra-Mounts read-only?**
-Sicherer Default für persönliche Daten. Das Projekt-Mount (`/workspace`) bleibt schreibbar.
+Das ist der sichere Default fuer persoenliche Daten. Das Projekt-Mount (`/workspace`)
+bleibt schreibbar.
 
-**Wie ändere ich Einstellungen nachträglich?**
+**Wie aendere ich Einstellungen nachtraeglich?**
+
 ```bash
-fbox -c                         # öffnet ~/.config/fbox/config.toml im konfigurierten Editor
+fbox -c
 ```
 
 **Was passiert wenn ein Container fehlt aber noch im State ist?**
-`fbox` erkennt das automatisch, bereinigt den State und erstellt beim nächsten Aufruf einen neuen Container.
+`fbox` erkennt das automatisch, bereinigt den State und erstellt beim naechsten Aufruf
+einen neuen Container.

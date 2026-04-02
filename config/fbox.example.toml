@@ -1,5 +1,5 @@
 # fbox runtime defaults
-# Kopiere diese Datei nach ~/.config/fbox/config.toml oder nutze ./install_ubuntu.sh.
+# Kopiere diese Datei nach ~/.config/fbox/config.toml oder nutze scripts/install_ubuntu.sh bzw. scripts/install_windows.ps1.
 
 default_profile = ""           # Profil das ohne -p verwendet wird ("" = kein Profil)
 

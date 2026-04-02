@@ -17,13 +17,14 @@ Architecture:
 Usage:
     from fbox.install.cleanup import uninstall_fbox
 
-    uninstall_fbox(repo_root, Path("~/.local/bin/fbox").expanduser(), True)
+    uninstall_fbox(repo_root, Path("~/.local/bin/fbox.cmd").expanduser(), True)
 """
 
 from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from fbox.config.settings import get_config_file, get_state_file
@@ -37,6 +38,9 @@ def uninstall_fbox(
     if remove_containers:
         remove_managed_containers()
     remove_file_if_present(wrapper_path)
+    # On Windows also try the .cmd variant in case the path was stored without extension
+    if sys.platform == "win32" and wrapper_path.suffix.lower() != ".cmd":
+        remove_file_if_present(wrapper_path.with_suffix(".cmd"))
     remove_file_if_present(get_config_file())
     remove_file_if_present(get_state_file())
     remove_directory_if_present(repo_root / ".venv")

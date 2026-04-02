@@ -30,6 +30,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+_IS_WINDOWS = sys.platform == "win32"
+
 
 def install_local_venv(repo_root: Path, wrapper_path: str) -> None:
     venv_path = repo_root / ".venv"
@@ -38,10 +40,12 @@ def install_local_venv(repo_root: Path, wrapper_path: str) -> None:
 
 
 def installation_exists(repo_root: Path, config_path: Path) -> bool:
+    local_bin = Path.home().joinpath(".local", "bin")
     return (
         (repo_root / ".venv").exists()
         or config_path.exists()
-        or Path.home().joinpath(".local", "bin", "fbox").exists()
+        or local_bin.joinpath("fbox").exists()
+        or local_bin.joinpath("fbox.cmd").exists()
     )
 
 
@@ -58,16 +62,36 @@ def create_virtualenv(venv_path: Path) -> None:
 
 
 def write_wrapper_script(venv_path: Path, repo_root: Path, wrapper_path: Path) -> None:
-    wrapper_path.parent.mkdir(parents=True, exist_ok=True)
-    wrapper_content = "\n".join(
-        [
-            "#!/usr/bin/env bash",
-            "set -euo pipefail",
-            f'REPO_ROOT="{repo_root}"',
-            'export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"',
-            f'exec "{venv_path / "bin" / "python"}" -m fbox.cli.main "$@"',
-            "",
-        ]
-    )
-    wrapper_path.write_text(wrapper_content, encoding="utf-8")
-    wrapper_path.chmod(0o755)
+    if _IS_WINDOWS:
+        if wrapper_path.suffix.lower() != ".cmd":
+            wrapper_path = wrapper_path.with_suffix(".cmd")
+        wrapper_path.parent.mkdir(parents=True, exist_ok=True)
+        python_path = venv_path / "Scripts" / "python.exe"
+        wrapper_content = "\n".join(
+            [
+                "@echo off",
+                f'set "REPO_ROOT={repo_root}"',
+                "if defined PYTHONPATH (",
+                '    set "PYTHONPATH=%REPO_ROOT%\\src;%PYTHONPATH%"',
+                ") else (",
+                '    set "PYTHONPATH=%REPO_ROOT%\\src"',
+                ")",
+                f'"{python_path}" -m fbox.cli.main %*',
+                "",
+            ]
+        )
+        wrapper_path.write_text(wrapper_content, encoding="utf-8")
+    else:
+        wrapper_path.parent.mkdir(parents=True, exist_ok=True)
+        wrapper_content = "\n".join(
+            [
+                "#!/usr/bin/env bash",
+                "set -euo pipefail",
+                f'REPO_ROOT="{repo_root}"',
+                'export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"',
+                f'exec "{venv_path / "bin" / "python"}" -m fbox.cli.main "$@"',
+                "",
+            ]
+        )
+        wrapper_path.write_text(wrapper_content, encoding="utf-8")
+        wrapper_path.chmod(0o755)

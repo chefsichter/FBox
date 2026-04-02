@@ -26,9 +26,14 @@ Usage:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from fbox.config.settings import AppConfig
+
+_DEFAULT_WRAPPER_PATH = (
+    "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
+)
 
 
 def ask(prompt: str, default: str) -> str:
@@ -109,10 +114,13 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
         "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
         "install_wrapper_path": ask(
             "Pfad fuer den globalen `fbox`-Starter",
-            "~/.local/bin/fbox",
+            _DEFAULT_WRAPPER_PATH,
         ),
     }
     wrapper_path = str(values["install_wrapper_path"])
+    if sys.platform == "win32" and not wrapper_path.lower().endswith(".cmd"):
+        wrapper_path = wrapper_path + ".cmd"
+        values["install_wrapper_path"] = wrapper_path
     return render_config_toml(values), wrapper_path
 
 

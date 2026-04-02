@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 from .files import ensure_config_exists
@@ -36,7 +37,7 @@ def get_config_path() -> Path:
 
 def edit_config(config: AppConfig) -> int:
     config_path = get_config_path()
-    editor_parts = shlex.split(resolve_editor_command(config))
+    editor_parts = shlex.split(resolve_editor_command(config), posix=(sys.platform != "win32"))
     completed = subprocess.run(
         [*editor_parts, str(config_path)],
         check=False,

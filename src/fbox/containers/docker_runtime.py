@@ -26,10 +26,10 @@ Usage:
 
 from __future__ import annotations
 
-import grp
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from fbox.config.settings import DEFAULT_CONTAINER_PREFIX, AppConfig
@@ -43,6 +43,18 @@ class DockerRuntimeError(RuntimeError):
 def require_docker() -> None:
     if shutil.which("docker") is None:
         raise DockerRuntimeError("docker wurde nicht gefunden.")
+    result = subprocess.run(
+        ["docker", "info"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise DockerRuntimeError(
+            "Docker-Daemon ist nicht erreichbar. "
+            "Bitte Docker Desktop starten und sicherstellen, "
+            "dass der Linux-Engine aktiv ist."
+        )
 
 
 def sanitize_container_name(raw_name: str) -> str:
@@ -184,11 +196,19 @@ def build_mount_spec(source: Path, destination: str, readonly: bool) -> str:
 def build_user_args(config: AppConfig) -> list[str]:
     if config.run_as_root:
         return []
+    if sys.platform == "win32":
+        raise DockerRuntimeError(
+            "host-user Modus wird auf Windows nicht unterstuetzt. "
+            "Bitte root_mode = \"root\" in der Konfiguration setzen."
+        )
     return ["--user", f"{os.getuid()}:{os.getgid()}"]
 
 
 def _resolve_group_id(name: str) -> str:
     """Return the numeric GID for a host group, or the name as fallback."""
+    if sys.platform == "win32":
+        return name
+    import grp
     try:
         return str(grp.getgrnam(name).gr_gid)
     except KeyError:
@@ -199,6 +219,10 @@ def build_gpu_args(config: AppConfig) -> list[str]:
     if config.gpu_vendor == "nvidia":
         return ["--gpus", "all"]
     if config.gpu_vendor == "amd":
+        if sys.platform == "win32":
+            raise DockerRuntimeError(
+                "AMD-GPU-Passthrough (ROCm) wird auf Windows nicht unterstuetzt."
+            )
         return [
             "--device=/dev/kfd",
             "--device=/dev/dri",

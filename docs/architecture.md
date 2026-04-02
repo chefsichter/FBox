@@ -4,30 +4,35 @@
 
 ```text
 fbox/
-├─ install_ubuntu.sh
-├─ pyproject.toml
-├─ README.md
-├─ config/
-│  └─ fbox.example.toml
-├─ docs/
-│  ├─ architecture.md
-│  └─ faq.md
-├─ src/
-│  └─ fbox/
-│     ├─ cli/
-│     ├─ config/
-│     ├─ containers/
-│     ├─ install/
-│     └─ state/
-└─ tests/
+|-- scripts/
+|   |-- install_ubuntu.sh
+|   |-- uninstall_ubuntu.sh
+|   |-- install_windows.ps1
+|   `-- uninstall_windows.ps1
+|-- pyproject.toml
+|-- README.md
+|-- config/
+|   `-- fbox.example.toml
+|-- docs/
+|   |-- architecture.md
+|   `-- faq.md
+|-- src/
+|   `-- fbox/
+|       |-- cli/
+|       |-- config/
+|       |-- containers/
+|       |-- install/
+|       `-- state/
+`-- tests/
 ```
 
 ## Module Responsibilities
 
+- `scripts/`: repo-local entrypoints for Linux and Windows installation/uninstallation.
 - `fbox.cli`: CLI parsing, interactive prompts, orchestration.
 - `fbox.config`: XDG paths, TOML config loading, editing.
 - `fbox.containers`: Docker command generation and target resolution.
-- `fbox.install`: interactive installer, local `.venv`, wrapper creation.
+- `fbox.install`: installer and uninstaller logic, local `.venv`, wrapper creation.
 - `fbox.state`: persistent JSON state for known containers.
 
 ## Runtime Flow
