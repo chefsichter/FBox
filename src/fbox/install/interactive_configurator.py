@@ -30,8 +30,11 @@ import sys
 import tomllib
 from pathlib import Path
 
-from fbox.config.profile_store import render_full_config
-from fbox.config.settings import EXAMPLE_CONFIG_PATH, AppConfig
+from fbox.config.profile_store import (
+    format_full_profile_config,
+    render_full_config,
+)
+from fbox.config.settings import EXAMPLE_CONFIG_PATH, AppConfig, _apply_overrides
 
 _DEFAULT_WRAPPER_PATH = (
     "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
@@ -78,55 +81,74 @@ def ask_choice(prompt: str, default: str, options: list[str]) -> str:
         print(f"Bitte eine dieser Optionen waehlen: {option_text}")
 
 
-def build_config_interactively(default_target: Path) -> tuple[str, str]:
-    values: dict[str, str | bool] = {
-        "default_image": ask("Docker-Image fuer neue Container", "ubuntu:24.04"),
-        "default_shell": ask("Shell fuer `docker exec`", "/bin/bash"),
-        "default_network": ask_choice(
-            "Netzwerk-Standard fuer neue Container",
-            "bridge",
-            ["none", "bridge", "host"],
-        ),
-        "gpu_vendor": ask_choice(
-            "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
-            "none",
-            ["none", "nvidia", "amd"],
-        ),
-        "root_mode": ask_choice(
-            "Container standardmaessig als root oder mit deinem Host-User starten",
-            "root",
-            ["root", "host-user"],
-        ),
-        "extra_mounts_readonly": ask_bool(
-            "Zusatz-Mounts standardmaessig read-only einhaengen",
-            True,
-        ),
-        "workspace_readonly": False,
-        "container_tmpfs_size": ask(
-            "Groesse von /tmp im Container (leer = unbegrenzt)",
-            "",
-        ),
-        "memory_limit": ask(
-            "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
-            "",
-        ),
-        "pids_limit": int(
-            ask("PID-Limit fuer Container (0 = unbegrenzt)", "0")
-        ),
-        "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
+def _values_from_config(d: AppConfig) -> dict[str, object]:
+    """Baut das values-Dict aus einer AppConfig ohne interaktive Fragen."""
+    return {
+        "default_image": d.default_image,
+        "default_shell": d.default_shell,
+        "default_network": d.default_network,
+        "gpu_vendor": d.gpu_vendor,
+        "root_mode": d.root_mode,
+        "extra_mounts_readonly": d.extra_mounts_readonly,
+        "workspace_readonly": d.workspace_readonly,
+        "container_tmpfs_size": d.container_tmpfs_size,
+        "memory_limit": d.memory_limit,
+        "pids_limit": d.pids_limit,
+        "editor_command": "code --wait",
         "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
     }
-    wrapper_path = _DEFAULT_WRAPPER_PATH
 
+
+def build_config_interactively(default_target: Path) -> tuple[str, str]:
     example_profiles = _load_example_profiles()
-    default_profile = _ask_default_profile(example_profiles)
+    chosen_profile, d, direct = _ask_base_profile(example_profiles)
 
-    rendered = render_full_config(
-        dict(values),
-        example_profiles,
-        default_profile,
-    )
-    return rendered, wrapper_path
+    if direct:
+        values = _values_from_config(d)
+    else:
+        values = {
+            "default_image": ask("Docker-Image fuer neue Container", d.default_image),
+            "default_shell": ask("Shell fuer `docker exec`", d.default_shell),
+            "default_network": ask_choice(
+                "Netzwerk-Standard fuer neue Container",
+                d.default_network,
+                ["none", "bridge", "host"],
+            ),
+            "gpu_vendor": ask_choice(
+                "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
+                d.gpu_vendor,
+                ["none", "nvidia", "amd"],
+            ),
+            "root_mode": ask_choice(
+                "Container standardmaessig als root oder mit deinem Host-User starten",
+                d.root_mode,
+                ["root", "host-user"],
+            ),
+            "extra_mounts_readonly": ask_bool(
+                "Zusatz-Mounts standardmaessig read-only einhaengen",
+                d.extra_mounts_readonly,
+            ),
+            "workspace_readonly": ask_bool(
+                "Workspace read-only einhaengen",
+                d.workspace_readonly,
+            ),
+            "container_tmpfs_size": ask(
+                "Groesse von /tmp im Container (leer = unbegrenzt)",
+                d.container_tmpfs_size,
+            ),
+            "memory_limit": ask(
+                "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
+                d.memory_limit,
+            ),
+            "pids_limit": int(
+                ask("PID-Limit fuer Container (0 = unbegrenzt)", str(d.pids_limit))
+            ),
+            "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
+            "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
+        }
+
+    rendered = render_full_config(values, example_profiles, chosen_profile)
+    return rendered, _DEFAULT_WRAPPER_PATH
 
 
 def _load_example_profiles() -> dict[str, dict]:
@@ -137,17 +159,83 @@ def _load_example_profiles() -> dict[str, dict]:
     return dict(payload.get("profiles", {}))
 
 
-def _ask_default_profile(profiles: dict[str, dict]) -> str:
+def _ask_base_profile(
+    profiles: dict[str, dict],
+) -> tuple[str, AppConfig, bool]:
+    """Nummerierte Auswahl mit Preview und Direkt-Übernahme.
+
+    Gibt (profilname, AppConfig, direct) zurueck.
+    direct=True  → Profil direkt uebernehmen, kein Fragebogen
+    direct=False → Fragebogen mit Profil-Werten als Defaults
+    """
     if not profiles:
-        return ""
+        return "", AppConfig(), False
+
     names = list(profiles.keys())
-    options = names + ["none"]
-    choice = ask_choice(
-        f"Standard-Profil ({', '.join(names)})",
-        "none",
-        options,
-    )
-    return "" if choice == "none" else choice
+
+    def _show_list() -> None:
+        print("\nVerfuegbare Profile:")
+        print("  [0] default")
+        for i, name in enumerate(names, 1):
+            print(f"  [{i}] {name}")
+
+    _show_list()
+
+    while True:
+        try:
+            raw = input(
+                "\nProfil anzeigen (PID) oder Enter fuer Auswahl: "
+            ).strip()
+        except EOFError:
+            break
+
+        if not raw:
+            break  # → direkt zur Kurzauswahl
+
+        try:
+            pid = int(raw)
+        except ValueError:
+            print("  Bitte eine Zahl eingeben.")
+            continue
+
+        base = AppConfig()
+        if pid == 0:
+            print(format_full_profile_config("default", {}, base))
+            action = ask_choice("Aktion (u=uebernehmen / z=zurueck)", "u", ["u", "z"])
+            if action == "u":
+                return "", base, True
+            _show_list()
+            continue
+
+        if not (1 <= pid <= len(names)):
+            print(f"  Unbekannte PID: {pid}")
+            continue
+
+        name = names[pid - 1]
+        merged = _apply_overrides(base, profiles[name])
+        print(format_full_profile_config(name, profiles[name], merged))
+        action = ask_choice(
+            "Aktion (u=uebernehmen / b=bearbeiten / z=zurueck)",
+            "u",
+            ["u", "b", "z"],
+        )
+        if action == "u":
+            # Basis bleibt AppConfig-Defaults, Profil wirkt als Runtime-Override
+            return name, base, True
+        if action == "b":
+            # Fragebogen mit Profil-Werten als Defaults
+            return name, merged, False
+        _show_list()
+
+    # Enter ohne Preview → Kurzauswahl
+    pids = ["0"] + [str(i) for i in range(1, len(names) + 1)]
+    choice = ask_choice("Profil als Basis und Standard", "0", pids)
+    pid = int(choice)
+    if pid == 0:
+        return "", AppConfig(), False
+    name = names[pid - 1]
+    merged = _apply_overrides(AppConfig(), profiles[name])
+    return name, merged, False
 
 
 def choose_install_action(has_existing_installation: bool) -> str:

@@ -101,6 +101,41 @@ def _render_value(value: object) -> str:
     return f'"{escaped}"'
 
 
+_PREVIEW_FIELDS = [
+    "default_image", "default_shell", "default_network", "gpu_vendor",
+    "root_mode", "extra_mounts_readonly", "workspace_readonly",
+    "container_tmpfs_size", "memory_limit", "pids_limit",
+]
+
+
+def format_full_profile_config(name: str, overrides: dict, merged: object) -> str:
+    """Vollstaendige Konfiguration — mit Profil ueberschriebene Felder mit * markiert.
+
+    merged ist eine AppConfig-Instanz (Basis + Profil zusammengefuehrt).
+    overrides ist das reine Profil-Dict (nur die ueberschriebenen Felder).
+    Leeres overrides-Dict → kein * → zeigt reine Basis-Konfiguration.
+    """
+    width = max(len(f) for f in _PREVIEW_FIELDS)
+    lines = [f"\n  [{name}]  (* = Profilwert):"]
+    for fname in _PREVIEW_FIELDS:
+        value = getattr(merged, fname)
+        marker = "* " if fname in overrides else "  "
+        lines.append(f"  {marker}{fname:<{width}} = {_render_value(value)}")
+    return "\n".join(lines)
+
+
+def format_profile_overrides(name: str, overrides: dict) -> str:
+    """Gibt Profilinhalt als lesbaren String zurueck."""
+    lines = [f"  [{name}]"]
+    if not overrides:
+        lines.append("  (keine Einstellungen - entspricht Basis-Konfiguration)")
+    else:
+        width = max(len(k) for k in overrides)
+        for k, v in overrides.items():
+            lines.append(f"  {k:<{width}} = {_render_value(v)}")
+    return "\n".join(lines)
+
+
 def render_full_config(
     base_values: dict[str, object],
     profiles: dict[str, dict[str, object]],

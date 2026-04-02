@@ -12,13 +12,14 @@ from pathlib import Path
 
 from fbox.config.profile_store import (
     delete_profile,
+    format_full_profile_config,
     get_default_profile_name,
     get_profile_names,
     get_profile_overrides,
     set_default_profile,
     upsert_profile,
 )
-from fbox.config.settings import AppConfig
+from fbox.config.settings import AppConfig, _apply_overrides, load_config
 from fbox.install.interactive_configurator import build_profile_interactively
 
 
@@ -36,14 +37,38 @@ def _resolve_pid_or_name(names: list[str], pid_or_name: str) -> str | None:
 def cmd_profile_ls(config_path: Path) -> int:
     names = get_profile_names(config_path)
     default = get_default_profile_name(config_path)
-    if not names:
-        print("Keine Profile vorhanden.")
-        return 0
+
+    # [0] default ist immer sichtbar
+    default_active = not default or default not in names
+    print(f"  {'*' if default_active else ' '} [0] default")
     for pid, name in enumerate(names, 1):
-        marker = " (default)" if name == default else ""
-        print(f"  [{pid}] {name}{marker}")
+        marker = "*" if name == default else " "
+        print(f"  {marker} [{pid}] {name}")
     if default and default not in names:
         print(f"  (default_profile = '{default}', aber kein solches Profil gefunden)")
+
+    if not sys.stdin.isatty():
+        return 0
+
+    base = load_config(config_path, profile="none")
+
+    while True:
+        try:
+            raw = input("\nProfil-Details anzeigen (PID, Enter zum Beenden): ").strip()
+        except EOFError:
+            break
+        if not raw:
+            break
+        if raw == "0":
+            print(format_full_profile_config("default", {}, base))
+            continue
+        name = _resolve_pid_or_name(names, raw)
+        if name is None:
+            print(f"  Unbekannte PID: {raw}")
+            continue
+        overrides = get_profile_overrides(config_path, name)
+        merged = _apply_overrides(base, overrides)
+        print(format_full_profile_config(name, overrides, merged))
     return 0
 
 
