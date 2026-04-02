@@ -8,7 +8,7 @@ def test_build_config_interactively_uses_defaults_on_eof(monkeypatch) -> None:
 
     rendered, wrapper_path = build_config_interactively(Path("/tmp/demo"))
 
-    assert "allow_all_gpus = true" in rendered
+    assert 'gpu_vendor = "none"' in rendered
     assert 'default_network = "bridge"' in rendered
     assert "workspace_readonly = false" in rendered
     assert 'container_tmpfs_size = ""' in rendered

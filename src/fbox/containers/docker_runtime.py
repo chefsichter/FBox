@@ -177,9 +177,18 @@ def build_user_args(config: AppConfig) -> list[str]:
 
 
 def build_gpu_args(config: AppConfig) -> list[str]:
-    if not config.allow_all_gpus:
-        return []
-    return ["--gpus", "all"]
+    if config.gpu_vendor == "nvidia":
+        return ["--gpus", "all"]
+    if config.gpu_vendor == "amd":
+        return [
+            "--device=/dev/kfd",
+            "--device=/dev/dri",
+            "--group-add",
+            "video",
+            "--group-add",
+            "render",
+        ]
+    return []
 
 
 def ensure_started(name: str) -> None:

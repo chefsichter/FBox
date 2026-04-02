@@ -10,9 +10,15 @@ from fbox.containers.models import ContainerRecord
 
 def test_maybe_handle_config_flags_prints_path(capsys, monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "get_config_path", lambda: Path("/tmp/config.toml"))
-    args = argparse.Namespace(print_config_path=True, config=False)
+    args = argparse.Namespace(
+        print_config_path=True,
+        config=False,
+        ls=False,
+        debug=False,
+        target=None,
+    )
 
-    result = cli_main.maybe_handle_config_flags(args, AppConfig())
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
 
     assert result == 0
     assert capsys.readouterr().out.strip() == "/tmp/config.toml"
@@ -20,11 +26,51 @@ def test_maybe_handle_config_flags_prints_path(capsys, monkeypatch) -> None:
 
 def test_maybe_handle_config_flags_opens_editor(monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "edit_config", lambda config: 7)
-    args = argparse.Namespace(print_config_path=False, config=True)
+    args = argparse.Namespace(
+        print_config_path=False,
+        config=True,
+        ls=False,
+        debug=False,
+        target=None,
+    )
 
-    result = cli_main.maybe_handle_config_flags(args, AppConfig())
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
 
     assert result == 7
+
+
+def test_maybe_handle_config_flags_lists_containers(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "print_container_list", lambda store: None)
+    args = argparse.Namespace(
+        print_config_path=False,
+        config=False,
+        ls=True,
+        debug=False,
+        target=None,
+    )
+
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
+
+    assert result == 0
+
+
+def test_maybe_handle_config_flags_prints_debug(monkeypatch) -> None:
+    monkeypatch.setattr(
+        cli_main,
+        "print_debug_report",
+        lambda store, config, target: None,
+    )
+    args = argparse.Namespace(
+        print_config_path=False,
+        config=False,
+        ls=False,
+        debug=True,
+        target="demo",
+    )
+
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
+
+    assert result == 0
 
 
 def test_reuse_by_project_path_uses_record(monkeypatch) -> None:
@@ -122,7 +168,12 @@ def test_main_exits_with_error_when_target_unknown(monkeypatch) -> None:
         cli_main,
         "parse_args",
         lambda: argparse.Namespace(
-            target="missing", image=None, print_config_path=False, config=False
+            target="missing",
+            image=None,
+            print_config_path=False,
+            config=False,
+            ls=False,
+            debug=False,
         ),
     )
     monkeypatch.setattr(

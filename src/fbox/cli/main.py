@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from fbox.cli.interactive_prompts import prompt_container_name, prompt_extra_mounts
+from fbox.cli.status_views import print_container_list, print_debug_report
 from fbox.config.editing import edit_config, get_config_path
 from fbox.config.files import ensure_config_exists
 from fbox.config.settings import DEFAULT_IMAGE, AppConfig, load_config
@@ -52,7 +53,7 @@ def main() -> None:
     try:
         ensure_config_exists()
         config = load_config()
-        flag_exit_code = maybe_handle_config_flags(args, config)
+        flag_exit_code = maybe_handle_config_flags(args, config, store)
         if flag_exit_code is not None:
             raise SystemExit(flag_exit_code)
         require_docker()
@@ -79,6 +80,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="fbox",
         description="Startet oder erstellt eine persistente Docker-Arbeitsbox.",
+        epilog=(
+            "Beispiele:\n"
+            "  fbox\n"
+            "  fbox /pfad/zum/projekt\n"
+            "  fbox mein-container\n"
+            "  fbox --ls\n"
+            "  fbox --debug"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("target", nargs="?", help="Pfad oder bestehender fbox-Name")
     parser.add_argument(
@@ -96,18 +106,35 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Gibt den Pfad zur globalen fbox-Konfiguration aus.",
     )
+    parser.add_argument(
+        "--ls",
+        action="store_true",
+        help="Listet alle gespeicherten fbox-Container auf.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Zeigt Konfiguration, Pfade und bekannten Container-Zustand an.",
+    )
     return parser.parse_args()
 
 
 def maybe_handle_config_flags(
     args: argparse.Namespace,
     config: AppConfig,
+    store: ContainerStateStore,
 ) -> int | None:
     if args.print_config_path:
         print(get_config_path())
         return 0
     if args.config:
         return edit_config(config)
+    if args.ls:
+        print_container_list(store)
+        return 0
+    if args.debug:
+        print_debug_report(store, config, args.target)
+        return 0
     return None
 
 

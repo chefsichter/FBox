@@ -17,7 +17,7 @@ def test_build_mount_spec_respects_readonly_flag() -> None:
 def test_build_create_args_include_gpu_and_host_user_settings(monkeypatch) -> None:
     monkeypatch.setattr("os.getuid", lambda: 1000)
     monkeypatch.setattr("os.getgid", lambda: 1000)
-    config = AppConfig(allow_all_gpus=True, root_mode="host-user")
+    config = AppConfig(gpu_vendor="nvidia", root_mode="host-user")
     record = ContainerRecord(
         name="fbox-demo",
         project_path="/tmp/demo",

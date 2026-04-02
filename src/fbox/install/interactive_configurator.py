@@ -78,9 +78,10 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
             "bridge",
             ["none", "bridge", "host"],
         ),
-        "allow_all_gpus": ask_bool(
-            "Alle GPUs standardmaessig in neue Container durchreichen",
-            True,
+        "gpu_vendor": ask_choice(
+            "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
+            "none",
+            ["none", "nvidia", "amd"],
         ),
         "root_mode": ask_choice(
             "Container standardmaessig als root oder mit deinem Host-User starten",
@@ -118,10 +119,14 @@ def choose_install_action(has_existing_installation: bool) -> str:
     option_text = "install(i)/reinstall(r)/uninstall(u)/abort(a)"
     while True:
         try:
-            answer = input(
-                "Bestehende fbox-Installation erkannt. Aktion waehlen "
-                f"[{option_text}, default reinstall]: "
-            ).strip().lower()
+            answer = (
+                input(
+                    "Bestehende fbox-Installation erkannt. Aktion waehlen "
+                    f"[{option_text}, default reinstall]: "
+                )
+                .strip()
+                .lower()
+            )
         except EOFError:
             return "reinstall"
         if not answer:

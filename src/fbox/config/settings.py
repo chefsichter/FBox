@@ -48,7 +48,7 @@ class AppConfig:
     default_image: str = DEFAULT_IMAGE
     default_shell: str = DEFAULT_SHELL
     default_network: str = "bridge"
-    allow_all_gpus: bool = True
+    gpu_vendor: str = "none"
     root_mode: str = "root"
     extra_mounts_readonly: bool = True
     workspace_readonly: bool = False
@@ -87,7 +87,7 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         default_image=str(payload.get("default_image", DEFAULT_IMAGE)),
         default_shell=str(payload.get("default_shell", DEFAULT_SHELL)),
         default_network=str(payload.get("default_network", "bridge")),
-        allow_all_gpus=bool(payload.get("allow_all_gpus", True)),
+        gpu_vendor=str(payload.get("gpu_vendor", "none")),
         root_mode=str(payload.get("root_mode", "root")),
         extra_mounts_readonly=bool(payload.get("extra_mounts_readonly", True)),
         workspace_readonly=bool(payload.get("workspace_readonly", False)),
