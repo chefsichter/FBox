@@ -15,6 +15,7 @@ def test_maybe_handle_config_flags_prints_path(capsys, monkeypatch) -> None:
         config=False,
         ls=False,
         debug=False,
+        rm=None,
         target=None,
     )
 
@@ -31,6 +32,7 @@ def test_maybe_handle_config_flags_opens_editor(monkeypatch) -> None:
         config=True,
         ls=False,
         debug=False,
+        rm=None,
         target=None,
     )
 
@@ -46,6 +48,7 @@ def test_maybe_handle_config_flags_lists_containers(monkeypatch) -> None:
         config=False,
         ls=True,
         debug=False,
+        rm=None,
         target=None,
     )
 
@@ -65,7 +68,24 @@ def test_maybe_handle_config_flags_prints_debug(monkeypatch) -> None:
         config=False,
         ls=False,
         debug=True,
+        rm=None,
         target="demo",
+    )
+
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
+
+    assert result == 0
+
+
+def test_maybe_handle_config_flags_removes_container_by_id(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "remove_container_by_id", lambda store, record_id: 0)
+    args = argparse.Namespace(
+        print_config_path=False,
+        config=False,
+        ls=False,
+        debug=False,
+        rm=2,
+        target=None,
     )
 
     result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
@@ -174,6 +194,7 @@ def test_main_exits_with_error_when_target_unknown(monkeypatch) -> None:
             config=False,
             ls=False,
             debug=False,
+            rm=None,
         ),
     )
     monkeypatch.setattr(
@@ -190,6 +211,36 @@ def test_main_exits_with_error_when_target_unknown(monkeypatch) -> None:
     assert str(error.value) == "Kein bekannter fbox-Container gefunden: missing"
 
 
+def test_remove_container_by_id_removes_state_and_container(monkeypatch) -> None:
+    record = ContainerRecord(
+        name="fbox-demo",
+        project_path="/tmp/demo",
+        image="ubuntu:24.04",
+        container_id=None,
+        extra_mounts=[],
+    )
+    store = FakeStore(record_by_name=record)
+    store.records = [record]
+    monkeypatch.setattr(cli_main, "get_indexed_records", lambda store: [(1, record)])
+    monkeypatch.setattr(cli_main, "container_exists", lambda name: True)
+    removed: list[str] = []
+    monkeypatch.setattr(cli_main, "remove_container", lambda name: removed.append(name))
+
+    result = cli_main.remove_container_by_id(store, 1)
+
+    assert result == 0
+    assert removed == ["fbox-demo"]
+    assert store.deleted_names == ["fbox-demo"]
+
+
+def test_remove_container_by_id_handles_unknown_id(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "get_indexed_records", lambda store: [])
+
+    result = cli_main.remove_container_by_id(FakeStore(), 9)
+
+    assert result == 1
+
+
 class FakeStore:
     def __init__(
         self,
@@ -200,6 +251,7 @@ class FakeStore:
         self.record_by_name = record_by_name
         self.deleted_names: list[str] = []
         self.saved_record: ContainerRecord | None = None
+        self.records: list[ContainerRecord] = []
 
     def find_by_project_path(self, project_path: Path) -> ContainerRecord | None:
         return self.record_by_path
@@ -212,3 +264,6 @@ class FakeStore:
 
     def upsert(self, record: ContainerRecord) -> None:
         self.saved_record = record
+
+    def load(self) -> list[ContainerRecord]:
+        return self.records

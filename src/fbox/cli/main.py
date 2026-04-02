@@ -29,7 +29,11 @@ import sys
 from pathlib import Path
 
 from fbox.cli.interactive_prompts import prompt_container_name, prompt_extra_mounts
-from fbox.cli.status_views import print_container_list, print_debug_report
+from fbox.cli.status_views import (
+    get_indexed_records,
+    print_container_list,
+    print_debug_report,
+)
 from fbox.config.editing import edit_config, get_config_path
 from fbox.config.files import ensure_config_exists
 from fbox.config.settings import DEFAULT_IMAGE, AppConfig, load_config
@@ -40,6 +44,7 @@ from fbox.containers.docker_runtime import (
     ensure_started,
     find_container_by_label,
     open_shell,
+    remove_container,
     require_docker,
 )
 from fbox.containers.models import ContainerRecord
@@ -86,35 +91,49 @@ def parse_args() -> argparse.Namespace:
             "  fbox /pfad/zum/projekt\n"
             "  fbox mein-container\n"
             "  fbox --ls\n"
+            "  fbox --rm 2\n"
             "  fbox --debug"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("target", nargs="?", help="Pfad oder bestehender fbox-Name")
     parser.add_argument(
+        "-i",
         "--image",
         default=None,
         help="Docker-Image fuer neue Container. Default: ubuntu:24.04",
     )
     parser.add_argument(
+        "-c",
         "--config",
         action="store_true",
         help="Oeffnet die globale fbox-Konfiguration im Editor.",
     )
     parser.add_argument(
+        "-cfgpath",
         "--print-config-path",
         action="store_true",
         help="Gibt den Pfad zur globalen fbox-Konfiguration aus.",
     )
     parser.add_argument(
+        "-ls",
         "--ls",
         action="store_true",
         help="Listet alle gespeicherten fbox-Container auf.",
     )
     parser.add_argument(
+        "-d",
         "--debug",
         action="store_true",
         help="Zeigt Konfiguration, Pfade und bekannten Container-Zustand an.",
+    )
+    parser.add_argument(
+        "-rm",
+        "--rm",
+        type=int,
+        default=None,
+        metavar="ID",
+        help="Loescht den Container mit der ID aus `fbox --ls`.",
     )
     return parser.parse_args()
 
@@ -135,7 +154,22 @@ def maybe_handle_config_flags(
     if args.debug:
         print_debug_report(store, config, args.target)
         return 0
+    if args.rm is not None:
+        return remove_container_by_id(store, args.rm)
     return None
+
+
+def remove_container_by_id(store: ContainerStateStore, container_id: int) -> int:
+    indexed_records = dict(get_indexed_records(store))
+    record = indexed_records.get(container_id)
+    if record is None:
+        print(f"fbox: Unbekannte Container-ID: {container_id}", file=sys.stderr)
+        return 1
+    if container_exists(record.name):
+        remove_container(record.name)
+    store.delete_by_name(record.name)
+    print(f"Geloescht: [{container_id}] {record.name}")
+    return 0
 
 
 def reuse_existing_container(

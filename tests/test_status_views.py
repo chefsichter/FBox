@@ -1,4 +1,8 @@
-from fbox.cli.status_views import print_container_list, print_debug_report
+from fbox.cli.status_views import (
+    get_indexed_records,
+    print_container_list,
+    print_debug_report,
+)
 from fbox.config.settings import AppConfig
 from fbox.containers.models import ContainerRecord
 
@@ -19,9 +23,9 @@ def test_print_container_list_renders_known_records(capsys, monkeypatch) -> None
     print_container_list(store)
 
     output = capsys.readouterr().out
-    assert "NAME\tRUNNING\tIMAGE\tPROJECT_PATH" in output
-    assert "fbox-a\ttrue\tubuntu\t/tmp/a" in output
-    assert "fbox-b\tfalse\tubuntu\t/tmp/b" in output
+    assert "ID\tNAME\tRUNNING\tIMAGE\tPROJECT_PATH" in output
+    assert "1\tfbox-a\ttrue\tubuntu\t/tmp/a" in output
+    assert "2\tfbox-b\tfalse\tubuntu\t/tmp/b" in output
 
 
 def test_print_debug_report_shows_paths_and_values(capsys, monkeypatch) -> None:
@@ -41,8 +45,24 @@ def test_print_debug_report_shows_paths_and_values(capsys, monkeypatch) -> None:
     assert "[Config]" in output
     assert "bridge" in output
     assert "[Containers (1)]" in output
-    assert "fbox-a" in output
+    assert "[1] fbox-a" in output
     assert "stopped" in output
+
+
+def test_get_indexed_records_returns_stable_sorted_ids() -> None:
+    store = FakeStore(
+        [
+            ContainerRecord("fbox-c", "/tmp/c", "ubuntu", None, []),
+            ContainerRecord("fbox-a", "/tmp/a", "ubuntu", None, []),
+        ]
+    )
+
+    records = get_indexed_records(store)
+
+    assert [(item_id, record.name) for item_id, record in records] == [
+        (1, "fbox-a"),
+        (2, "fbox-c"),
+    ]
 
 
 class FakeStore:

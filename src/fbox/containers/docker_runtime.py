@@ -196,6 +196,10 @@ def ensure_started(name: str) -> None:
         run_docker_command(["start", name])
 
 
+def remove_container(name: str) -> None:
+    run_docker_command(["rm", "-f", name])
+
+
 def open_shell(name: str, config: AppConfig) -> int:
     completed = subprocess.run(
         ["docker", "exec", "-it", name, config.default_shell],

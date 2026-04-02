@@ -32,6 +32,7 @@ from fbox.config.settings import (
     get_state_file,
 )
 from fbox.containers.docker_runtime import container_exists, container_is_running
+from fbox.containers.models import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
 
@@ -41,6 +42,13 @@ def _section(title: str) -> None:
 
 def _row(label: str, value: object, width: int = 24) -> None:
     print(f"  {label:<{width}} {value}")
+
+
+def get_indexed_records(
+    store: ContainerStateStore,
+) -> list[tuple[int, ContainerRecord]]:
+    records = sorted(store.load(), key=lambda item: item.name)
+    return list(enumerate(records, start=1))
 
 
 def print_debug_report(
@@ -81,30 +89,30 @@ def print_debug_report(
     _row("container_tmpfs_size", config.container_tmpfs_size or "<unlimited>")
     _row("editor_command", config.editor_command or "<default>")
 
-    records = store.load()
-    _section(f"Containers ({len(records)})")
-    if not records:
+    indexed_records = get_indexed_records(store)
+    _section(f"Containers ({len(indexed_records)})")
+    if not indexed_records:
         print("  <none>")
-    for record in sorted(records, key=lambda item: item.name):
+    for record_id, record in indexed_records:
         exists = container_exists(record.name) if docker_binary else False
         running = container_is_running(record.name) if exists else False
         status = "running" if running else ("stopped" if exists else "missing")
-        print(f"  {record.name}")
+        print(f"  [{record_id}] {record.name}")
         _row("status", status, width=10)
         _row("image", record.image, width=10)
         _row("project", record.project_path, width=10)
 
 
 def print_container_list(store: ContainerStateStore) -> None:
-    records = sorted(store.load(), key=lambda item: item.name)
-    if not records:
+    indexed_records = get_indexed_records(store)
+    if not indexed_records:
         print("Keine gespeicherten fbox-Container gefunden.")
         return
-    print("NAME\tRUNNING\tIMAGE\tPROJECT_PATH")
-    for record in records:
+    print("ID\tNAME\tRUNNING\tIMAGE\tPROJECT_PATH")
+    for record_id, record in indexed_records:
         exists = container_exists(record.name)
         running = container_is_running(record.name) if exists else False
         print(
-            f"{record.name}\t{str(running).lower()}\t"
+            f"{record_id}\t{record.name}\t{str(running).lower()}\t"
             f"{record.image}\t{record.project_path}"
         )
