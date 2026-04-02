@@ -11,8 +11,7 @@ fbox/
 │  └─ fbox.example.toml
 ├─ docs/
 │  ├─ architecture.md
-│  ├─ faq.md
-│  └─ usage.md
+│  └─ faq.md
 ├─ src/
 │  └─ fbox/
 │     ├─ cli/
