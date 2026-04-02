@@ -195,6 +195,7 @@ def test_main_exits_with_error_when_target_unknown(monkeypatch) -> None:
             ls=False,
             debug=False,
             rm=None,
+            inspect=None,
         ),
     )
     monkeypatch.setattr(

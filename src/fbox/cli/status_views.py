@@ -23,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 
 from fbox.config.settings import (
@@ -141,6 +142,31 @@ def print_debug_report(
     )
     args = ["docker"] + build_create_args(config, preview_record)
     print("  " + _format_docker_args(args))
+
+
+def print_container_inspect(store: ContainerStateStore, container_id: int) -> int:
+    indexed = dict(get_indexed_records(store))
+    record = indexed.get(container_id)
+    if record is None:
+        print(f"fbox: Unbekannte Container-ID: {container_id}", file=sys.stderr)
+        return 1
+    docker_binary = shutil.which("docker")
+    exists = container_exists(record.name) if docker_binary else False
+    running = container_is_running(record.name) if exists else False
+    status = "running" if running else ("stopped" if exists else "missing")
+    print(f"[{container_id}] {record.name}")
+    _row("status", status)
+    _row("image", record.image)
+    _row("project_path", record.project_path)
+    _row("container_id", record.container_id or "<unknown>")
+    _row("extra_mounts", record.extra_mounts or "<none>")
+    _row("extra_mounts_readonly", record.extra_mounts_readonly)
+    if record.create_args:
+        print("\n  docker create (used):")
+        print("    " + _format_docker_args(record.create_args))
+    else:
+        print("\n  docker create (used): <not recorded>")
+    return 0
 
 
 def print_container_list(store: ContainerStateStore) -> None:

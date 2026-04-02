@@ -33,6 +33,7 @@ class ContainerRecord:
     container_id: str | None
     extra_mounts: list[str]
     extra_mounts_readonly: bool = True
+    create_args: list[str] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -51,4 +52,9 @@ class ContainerRecord:
             ),
             extra_mounts=[str(item) for item in extra_mounts_payload],
             extra_mounts_readonly=bool(payload.get("extra_mounts_readonly", True)),
+            create_args=(
+                [str(a) for a in payload["create_args"]]
+                if isinstance(payload.get("create_args"), list)
+                else None
+            ),
         )

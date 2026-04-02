@@ -31,6 +31,7 @@ from pathlib import Path
 from fbox.cli.interactive_prompts import prompt_container_name, prompt_extra_mounts
 from fbox.cli.status_views import (
     get_indexed_records,
+    print_container_inspect,
     print_container_list,
     print_debug_report,
 )
@@ -39,6 +40,7 @@ from fbox.config.files import ensure_config_exists
 from fbox.config.settings import DEFAULT_IMAGE, AppConfig, load_config
 from fbox.containers.docker_runtime import (
     DockerRuntimeError,
+    build_create_args,
     container_exists,
     create_container,
     ensure_started,
@@ -95,14 +97,14 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="fbox",
         usage=(
             "fbox [PFAD|NAME] [-i IMAGE]\n"
-            "       fbox ls\n"
-            "       fbox rm ID"
+            "       fbox ls | inspect ID | rm ID"
         ),
         description="Persistente Docker-Arbeitsboxen verwalten.",
         epilog=(
             "Befehle:\n"
             "  fbox [PFAD|NAME]      Container starten oder neu erstellen\n"
             "  fbox ls               Alle bekannten Container auflisten\n"
+            "  fbox inspect ID       Details + exakte Create-Args anzeigen\n"
             "  fbox rm ID            Container nach ID aus 'fbox ls' loeschen\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -140,18 +142,24 @@ def _resolve_positionals(
     raw.target = None
     raw.ls = False
     raw.rm = None
+    raw.inspect = None
 
     if not words:
         pass
     elif words == ["ls"]:
         raw.ls = True
-    elif words[0] == "rm":
+    elif words[0] in {"rm", "inspect"}:
+        cmd = words[0]
         if len(words) < 2:
-            parser.error("rm: ID fehlt.  Verwendung: fbox rm ID")
+            parser.error(f"{cmd}: ID fehlt.  Verwendung: fbox {cmd} ID")
         try:
-            raw.rm = int(words[1])
+            numeric_id = int(words[1])
         except ValueError:
-            parser.error(f"rm: ID muss eine Zahl sein, nicht '{words[1]}'")
+            parser.error(f"{cmd}: ID muss eine Zahl sein, nicht '{words[1]}'")
+        if cmd == "rm":
+            raw.rm = numeric_id
+        else:
+            raw.inspect = numeric_id
     elif len(words) == 1:
         raw.target = words[0]
     else:
@@ -178,6 +186,8 @@ def maybe_handle_config_flags(
         return 0
     if args.rm is not None:
         return remove_container_by_id(store, args.rm)
+    if args.inspect is not None:
+        return print_container_inspect(store, args.inspect)
     return None
 
 
@@ -263,6 +273,7 @@ def create_new_container(
         extra_mounts=validate_mounts(resolved_path, prompt_extra_mounts()),
         extra_mounts_readonly=config.extra_mounts_readonly,
     )
+    record.create_args = ["docker"] + build_create_args(config, record)
     record.container_id = create_container(record, config)
     store.upsert(record)
     return start_and_open(record.name, config)
