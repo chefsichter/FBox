@@ -27,9 +27,11 @@ Usage:
 from __future__ import annotations
 
 import sys
+import tomllib
 from pathlib import Path
 
-from fbox.config.settings import AppConfig
+from fbox.config.profile_store import render_full_config
+from fbox.config.settings import EXAMPLE_CONFIG_PATH, AppConfig
 
 _DEFAULT_WRAPPER_PATH = (
     "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
@@ -121,7 +123,37 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
     if sys.platform == "win32" and not wrapper_path.lower().endswith(".cmd"):
         wrapper_path = wrapper_path + ".cmd"
         values["install_wrapper_path"] = wrapper_path
-    return render_config_toml(values), wrapper_path
+
+    example_profiles = _load_example_profiles()
+    default_profile = _ask_default_profile(example_profiles)
+
+    rendered = render_full_config(
+        dict(values),
+        example_profiles,
+        default_profile,
+    )
+    return rendered, wrapper_path
+
+
+def _load_example_profiles() -> dict[str, dict]:
+    if not EXAMPLE_CONFIG_PATH.exists():
+        return {}
+    with EXAMPLE_CONFIG_PATH.open("rb") as fh:
+        payload = tomllib.load(fh)
+    return dict(payload.get("profiles", {}))
+
+
+def _ask_default_profile(profiles: dict[str, dict]) -> str:
+    if not profiles:
+        return ""
+    names = list(profiles.keys())
+    options = names + ["none"]
+    choice = ask_choice(
+        f"Standard-Profil ({', '.join(names)})",
+        "none",
+        options,
+    )
+    return "" if choice == "none" else choice
 
 
 def choose_install_action(has_existing_installation: bool) -> str:

@@ -22,28 +22,40 @@ from fbox.config.settings import AppConfig
 from fbox.install.interactive_configurator import build_profile_interactively
 
 
+def _resolve_pid_or_name(names: list[str], pid_or_name: str) -> str | None:
+    """PID (1-basiert) oder Name → Profilname, None wenn nicht gefunden."""
+    try:
+        pid = int(pid_or_name)
+        if 1 <= pid <= len(names):
+            return names[pid - 1]
+        return None
+    except ValueError:
+        return pid_or_name if pid_or_name in names else None
+
+
 def cmd_profile_ls(config_path: Path) -> int:
     names = get_profile_names(config_path)
     default = get_default_profile_name(config_path)
     if not names:
         print("Keine Profile vorhanden.")
         return 0
-    for name in names:
+    for pid, name in enumerate(names, 1):
         marker = " (default)" if name == default else ""
-        print(f"  {name}{marker}")
+        print(f"  [{pid}] {name}{marker}")
     if default and default not in names:
         print(f"  (default_profile = '{default}', aber kein solches Profil gefunden)")
     return 0
 
 
-def cmd_profile_set_default(config_path: Path, name: str) -> int:
-    if name == "none" or name == "":
+def cmd_profile_set_default(config_path: Path, pid_or_name: str) -> int:
+    if pid_or_name in ("none", ""):
         set_default_profile(config_path, "")
         print("Standard-Profil zurueckgesetzt (kein Profil).")
         return 0
     names = get_profile_names(config_path)
-    if name not in names:
-        print(f"fbox: Profil '{name}' existiert nicht.", file=sys.stderr)
+    name = _resolve_pid_or_name(names, pid_or_name)
+    if name is None:
+        print(f"fbox: Profil '{pid_or_name}' nicht gefunden.", file=sys.stderr)
         return 1
     set_default_profile(config_path, name)
     print(f"Standard-Profil gesetzt: {name}")
@@ -73,12 +85,12 @@ def cmd_profile_new(config_path: Path, base_config: AppConfig) -> int:
     return 0
 
 
-def cmd_profile_edit(config_path: Path, name: str, base_config: AppConfig) -> int:
+def cmd_profile_edit(config_path: Path, pid_or_name: str, base_config: AppConfig) -> int:
     existing = get_profile_names(config_path)
-    if name not in existing:
-        print(f"fbox: Profil '{name}' existiert nicht.", file=sys.stderr)
+    name = _resolve_pid_or_name(existing, pid_or_name)
+    if name is None:
+        print(f"fbox: Profil '{pid_or_name}' nicht gefunden.", file=sys.stderr)
         return 1
-    # Build an AppConfig that reflects current overrides so they appear as defaults
     from fbox.config.settings import _apply_overrides
     current_overrides = get_profile_overrides(config_path, name)
     effective_base = _apply_overrides(base_config, current_overrides)
@@ -88,10 +100,11 @@ def cmd_profile_edit(config_path: Path, name: str, base_config: AppConfig) -> in
     return 0
 
 
-def cmd_profile_rm(config_path: Path, name: str) -> int:
+def cmd_profile_rm(config_path: Path, pid_or_name: str) -> int:
     existing = get_profile_names(config_path)
-    if name not in existing:
-        print(f"fbox: Profil '{name}' existiert nicht.", file=sys.stderr)
+    name = _resolve_pid_or_name(existing, pid_or_name)
+    if name is None:
+        print(f"fbox: Profil '{pid_or_name}' nicht gefunden.", file=sys.stderr)
         return 1
     delete_profile(config_path, name)
     print(f"Profil '{name}' geloescht.")

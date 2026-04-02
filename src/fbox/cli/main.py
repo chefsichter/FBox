@@ -99,7 +99,7 @@ def _build_parser() -> argparse.ArgumentParser:
         usage=(
             "fbox [PFAD|NAME] [-i IMAGE] [-p PROFIL]\n"
             "       fbox ls | inspect ID | rm ID\n"
-            "       fbox profile ls | default NAME | new | edit NAME | rm NAME"
+            "       fbox profile ls | default PID | new | edit PID | rm PID"
         ),
         description="Persistente Docker-Arbeitsboxen verwalten.",
         epilog=(
@@ -109,10 +109,10 @@ def _build_parser() -> argparse.ArgumentParser:
             "  fbox inspect ID            Details + exakte Create-Args anzeigen\n"
             "  fbox rm ID                 Container nach ID aus 'fbox ls' loeschen\n"
             "  fbox profile ls            Profile auflisten + Standard anzeigen\n"
-            "  fbox profile default NAME  Standard-Profil setzen (none = keins)\n"
+            "  fbox profile default PID   Standard-Profil setzen (none = keins)\n"
             "  fbox profile new           Neues Profil interaktiv erstellen\n"
-            "  fbox profile edit NAME     Bestehendes Profil neu konfigurieren\n"
-            "  fbox profile rm NAME       Profil loeschen\n"
+            "  fbox profile edit PID      Bestehendes Profil neu konfigurieren\n"
+            "  fbox profile rm PID        Profil loeschen\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
@@ -166,17 +166,17 @@ def _resolve_positionals(
             raw.profile_cmd = ("ls",)
         elif sub[0] == "default":
             if len(sub) < 2:
-                parser.error("profile default: NAME fehlt")
+                parser.error("profile default: PID fehlt")
             raw.profile_cmd = ("default", sub[1])
         elif sub == ["new"]:
             raw.profile_cmd = ("new",)
         elif sub[0] == "edit":
             if len(sub) < 2:
-                parser.error("profile edit: NAME fehlt")
+                parser.error("profile edit: PID fehlt")
             raw.profile_cmd = ("edit", sub[1])
         elif sub[0] == "rm":
             if len(sub) < 2:
-                parser.error("profile rm: NAME fehlt")
+                parser.error("profile rm: PID fehlt")
             raw.profile_cmd = ("rm", sub[1])
         else:
             parser.error(f"Unbekannter profile-Befehl: {' '.join(sub)}")
