@@ -35,6 +35,14 @@ from fbox.containers.docker_runtime import container_exists, container_is_runnin
 from fbox.state.container_state_store import ContainerStateStore
 
 
+def _section(title: str) -> None:
+    print(f"\n[{title}]")
+
+
+def _row(label: str, value: object, width: int = 24) -> None:
+    print(f"  {label:<{width}} {value}")
+
+
 def print_debug_report(
     store: ContainerStateStore,
     config: AppConfig,
@@ -45,40 +53,46 @@ def print_debug_report(
     state_path = get_state_file()
     wrapper_path = Path(config.install_wrapper_path).expanduser()
     docker_binary = shutil.which("docker")
-    print("fbox debug")
-    print(f"cwd: {Path.cwd().resolve()}")
-    print(f"repo_root: {repo_root}")
-    print(f"target_arg: {target or '<none>'}")
-    print(f"config_file: {config_path}")
-    print(f"config_exists: {config_path.exists()}")
-    print(f"config_example: {EXAMPLE_CONFIG_PATH}")
-    print(f"state_file: {state_path}")
-    print(f"state_exists: {state_path.exists()}")
-    print(f"wrapper_path: {wrapper_path}")
-    print(f"wrapper_exists: {wrapper_path.exists()}")
-    print(f"repo_venv: {repo_root / '.venv'}")
-    print(f"repo_venv_exists: {(repo_root / '.venv').exists()}")
-    print(f"docker_binary: {docker_binary or '<not found>'}")
-    print("config_values:")
-    print(f"  default_image: {config.default_image}")
-    print(f"  default_shell: {config.default_shell}")
-    print(f"  default_network: {config.default_network}")
-    print(f"  gpu_vendor: {config.gpu_vendor}")
-    print(f"  root_mode: {config.root_mode}")
-    print(f"  extra_mounts_readonly: {config.extra_mounts_readonly}")
-    print(f"  workspace_readonly: {config.workspace_readonly}")
-    print(f"  container_tmpfs_size: {config.container_tmpfs_size or '<unlimited>'}")
-    print(f"  editor_command: {config.editor_command or '<default>'}")
+
+    print("fbox --debug")
+
+    _section("Runtime")
+    _row("cwd", Path.cwd().resolve())
+    _row("target", target or "<none>")
+    _row("docker", docker_binary or "<not found>")
+
+    _section("Paths")
+    _row("repo_root", repo_root)
+    venv_path = repo_root / ".venv"
+    _row("venv", f"{venv_path}  ({'ok' if venv_path.exists() else 'missing'})")
+    _row("config", f"{config_path}  ({'ok' if config_path.exists() else 'missing'})")
+    _row("config_example", EXAMPLE_CONFIG_PATH)
+    _row("state", f"{state_path}  ({'ok' if state_path.exists() else 'missing'})")
+    _row("wrapper", f"{wrapper_path}  ({'ok' if wrapper_path.exists() else 'missing'})")
+
+    _section("Config")
+    _row("default_image", config.default_image)
+    _row("default_shell", config.default_shell)
+    _row("default_network", config.default_network)
+    _row("gpu_vendor", config.gpu_vendor)
+    _row("root_mode", config.root_mode)
+    _row("extra_mounts_readonly", config.extra_mounts_readonly)
+    _row("workspace_readonly", config.workspace_readonly)
+    _row("container_tmpfs_size", config.container_tmpfs_size or "<unlimited>")
+    _row("editor_command", config.editor_command or "<default>")
+
     records = store.load()
-    print(f"state_records: {len(records)}")
+    _section(f"Containers ({len(records)})")
+    if not records:
+        print("  <none>")
     for record in sorted(records, key=lambda item: item.name):
         exists = container_exists(record.name) if docker_binary else False
         running = container_is_running(record.name) if exists else False
-        print(
-            "  "
-            f"{record.name}: exists={exists} running={running} "
-            f"project_path={record.project_path}"
-        )
+        status = "running" if running else ("stopped" if exists else "missing")
+        print(f"  {record.name}")
+        _row("status", status, width=10)
+        _row("image", record.image, width=10)
+        _row("project", record.project_path, width=10)
 
 
 def print_container_list(store: ContainerStateStore) -> None:

@@ -36,11 +36,13 @@ def test_print_debug_report_shows_paths_and_values(capsys, monkeypatch) -> None:
     print_debug_report(store, AppConfig(default_network="bridge"), "/tmp/a")
 
     output = capsys.readouterr().out
-    assert "fbox debug" in output
-    assert "docker_binary: /usr/bin/docker" in output
-    assert "default_network: bridge" in output
-    assert "state_records: 1" in output
-    assert "fbox-a: exists=True running=False project_path=/tmp/a" in output
+    assert "[Runtime]" in output
+    assert "/usr/bin/docker" in output
+    assert "[Config]" in output
+    assert "bridge" in output
+    assert "[Containers (1)]" in output
+    assert "fbox-a" in output
+    assert "stopped" in output
 
 
 class FakeStore:
