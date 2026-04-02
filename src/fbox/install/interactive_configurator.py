@@ -114,15 +114,9 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
             ask("PID-Limit fuer Container (0 = unbegrenzt)", "0")
         ),
         "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
-        "install_wrapper_path": ask(
-            "Pfad fuer den globalen `fbox`-Starter",
-            _DEFAULT_WRAPPER_PATH,
-        ),
+        "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
     }
-    wrapper_path = str(values["install_wrapper_path"])
-    if sys.platform == "win32" and not wrapper_path.lower().endswith(".cmd"):
-        wrapper_path = wrapper_path + ".cmd"
-        values["install_wrapper_path"] = wrapper_path
+    wrapper_path = _DEFAULT_WRAPPER_PATH
 
     example_profiles = _load_example_profiles()
     default_profile = _ask_default_profile(example_profiles)
