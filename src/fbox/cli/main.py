@@ -188,3 +188,7 @@ def create_new_container(
 def start_and_open(container_name: str, config: AppConfig) -> int:
     ensure_started(container_name)
     return open_shell(container_name, config)
+
+
+if __name__ == "__main__":
+    main()
