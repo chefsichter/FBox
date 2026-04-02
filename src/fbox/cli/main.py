@@ -6,7 +6,7 @@ Architecture:
     │  main.py                                │
     │  ┌───────────────────────────────────┐  │
     │  │  CLI flags                       │  │
-    │  │  → target, --image, --config     │  │
+    │  │  → target, --config             │  │
     │  └──────────────┬────────────────────┘  │
     │  ┌──────────────▼────────────────────┐  │
     │  │  Resolve existing containers     │  │
@@ -37,7 +37,7 @@ from fbox.cli.status_views import (
 )
 from fbox.config.editing import edit_config, get_config_path
 from fbox.config.files import ensure_config_exists
-from fbox.config.settings import DEFAULT_IMAGE, AppConfig, load_config
+from fbox.config.settings import AppConfig, load_config
 from fbox.containers.docker_runtime import (
     DockerRuntimeError,
     build_create_args,
@@ -78,7 +78,7 @@ def main() -> None:
             raise SystemExit(
                 f"Kein bekannter fbox-Container gefunden: {container_name}"
             )
-        raise SystemExit(create_new_container(store, project_path, args.image, config))
+        raise SystemExit(create_new_container(store, project_path, config))
     except (DockerRuntimeError, ValueError) as error:
         print(f"fbox: {error}", file=sys.stderr)
         raise SystemExit(1) from error
@@ -97,7 +97,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="fbox",
         usage=(
-            "fbox [PFAD|NAME] [-i IMAGE] [-p PROFIL]\n"
+            "fbox [PFAD|NAME] [-p PROFIL]\n"
             "       fbox ls | inspect ID | rm ID\n"
             "       fbox profile ls | default PID | new | edit PID | rm PID"
         ),
@@ -122,10 +122,6 @@ def _build_parser() -> argparse.ArgumentParser:
     opts.add_argument(
         "-h", "--help", action="help", default=argparse.SUPPRESS,
         help="Diese Hilfe anzeigen",
-    )
-    opts.add_argument(
-        "-i", "--image", default=None, metavar="IMAGE",
-        help="Docker-Image fuer neue Container (default: ubuntu:24.04)",
     )
     opts.add_argument(
         "-p", "--profile", default=None, metavar="PROFIL",
@@ -316,7 +312,6 @@ def reuse_by_container_name(
 def create_new_container(
     store: ContainerStateStore,
     project_path: Path,
-    image_override: str | None,
     config: AppConfig,
 ) -> int:
     resolved_path = project_path.resolve()
@@ -326,7 +321,7 @@ def create_new_container(
     record = ContainerRecord(
         name=container_name,
         project_path=str(resolved_path),
-        image=image_override or config.default_image or DEFAULT_IMAGE,
+        image=config.default_image,
         container_id=None,
         extra_mounts=validate_mounts(resolved_path, prompt_extra_mounts()),
         extra_mounts_readonly=config.extra_mounts_readonly,
