@@ -110,7 +110,7 @@ def parse_args() -> argparse.Namespace:
         help="Oeffnet die globale fbox-Konfiguration im Editor.",
     )
     parser.add_argument(
-        "-cfgpath",
+        "-cpath",
         "--print-config-path",
         action="store_true",
         help="Gibt den Pfad zur globalen fbox-Konfiguration aus.",

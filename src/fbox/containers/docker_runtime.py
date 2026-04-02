@@ -26,6 +26,7 @@ Usage:
 
 from __future__ import annotations
 
+import grp
 import os
 import shutil
 import subprocess
@@ -176,6 +177,14 @@ def build_user_args(config: AppConfig) -> list[str]:
     return ["--user", f"{os.getuid()}:{os.getgid()}"]
 
 
+def _resolve_group_id(name: str) -> str:
+    """Return the numeric GID for a host group, or the name as fallback."""
+    try:
+        return str(grp.getgrnam(name).gr_gid)
+    except KeyError:
+        return name
+
+
 def build_gpu_args(config: AppConfig) -> list[str]:
     if config.gpu_vendor == "nvidia":
         return ["--gpus", "all"]
@@ -184,9 +193,9 @@ def build_gpu_args(config: AppConfig) -> list[str]:
             "--device=/dev/kfd",
             "--device=/dev/dri",
             "--group-add",
-            "video",
+            _resolve_group_id("video"),
             "--group-add",
-            "render",
+            _resolve_group_id("render"),
         ]
     return []
 
