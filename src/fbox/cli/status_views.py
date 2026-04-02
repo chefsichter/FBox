@@ -163,6 +163,13 @@ def print_debug_report(
     print("  " + _format_docker_args(args))
 
 
+def print_create_args(args: list[str], heading: str = "docker create") -> None:
+    """Gibt die docker-create-Argumente formatiert aus."""
+    print(f"\n{heading}")
+    print("  " + _format_docker_args(args))
+    print()
+
+
 def print_container_inspect(store: ContainerStateStore, container_id: int) -> int:
     indexed = dict(get_indexed_records(store))
     record = indexed.get(container_id)

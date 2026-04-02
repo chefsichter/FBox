@@ -33,6 +33,7 @@ from fbox.cli.status_views import (
     get_indexed_records,
     print_container_inspect,
     print_container_list,
+    print_create_args,
     print_debug_report,
 )
 from fbox.config.editing import edit_config, get_config_path
@@ -289,6 +290,8 @@ def reuse_by_project_path(
 ) -> int | None:
     record = _drop_stale_record(store, store.find_by_project_path(project_path))
     if record is not None:
+        if record.create_args:
+            print_create_args(record.create_args, "📦 Willkommen zurueck in deiner Box ...")
         return start_and_open(record.name, config)
     existing_name = find_container_by_label("ch.fbox.project_path", str(project_path))
     if existing_name is None:
@@ -303,6 +306,8 @@ def reuse_by_container_name(
 ) -> int | None:
     record = _drop_stale_record(store, store.find_by_name(container_name))
     if record is not None:
+        if record.create_args:
+            print_create_args(record.create_args, "📦 Willkommen zurueck in deiner Box ...")
         return start_and_open(record.name, config)
     if container_exists(container_name):
         return start_and_open(container_name, config)
@@ -327,6 +332,7 @@ def create_new_container(
         extra_mounts_readonly=config.extra_mounts_readonly,
     )
     record.create_args = ["docker"] + build_create_args(config, record)
+    print_create_args(record.create_args, "🚀 Richte deine neue Box ein ...")
     record.container_id = create_container(record, config)
     store.upsert(record)
     return start_and_open(record.name, config)
