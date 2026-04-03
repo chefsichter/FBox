@@ -47,7 +47,7 @@ class TestConfigFromDict:
             "root_mode": "host-user",
             "extra_mounts_readonly": False,
             "workspace_readonly": True,
-            "container_tmpfs_size": "512m",
+            "tmpfs": "/tmp:rw,noexec,nosuid,size=512m",
             "memory_limit": "4g",
             "pids_limit": 100,
             "editor_command": "vim",

@@ -107,7 +107,7 @@ def _render_value(value: object) -> str:
 _PREVIEW_FIELDS = [
     "default_image", "default_shell", "default_network", "gpu_vendor",
     "root_mode", "extra_mounts_readonly", "workspace_readonly",
-    "container_tmpfs_size", "build_tmpfs", "memory_limit", "pids_limit", "extra_flags",
+    "tmpfs", "memory_limit", "pids_limit", "extra_flags",
 ]
 
 

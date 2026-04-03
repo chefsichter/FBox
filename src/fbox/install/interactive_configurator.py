@@ -102,8 +102,7 @@ def _values_from_config(d: AppConfig) -> dict[str, object]:
         "root_mode": d.root_mode,
         "extra_mounts_readonly": d.extra_mounts_readonly,
         "workspace_readonly": d.workspace_readonly,
-        "container_tmpfs_size": d.container_tmpfs_size,
-        "build_tmpfs": d.build_tmpfs,
+        "tmpfs": d.tmpfs,
         "memory_limit": d.memory_limit,
         "pids_limit": d.pids_limit,
         "extra_flags": d.extra_flags,
@@ -145,13 +144,9 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
                 "Workspace read-only einhaengen",
                 d.workspace_readonly,
             ),
-            "container_tmpfs_size": ask(
-                "Groesse von /tmp im Container (leer = unbegrenzt)",
-                d.container_tmpfs_size,
-            ),
-            "build_tmpfs": ask(
-                "Build-tmpfs Spec (leer = deaktiviert, z.B. /build-tmp:rw,exec,nosuid)",
-                d.build_tmpfs,
+            "tmpfs": ask(
+                "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",
+                d.tmpfs,
             ),
             "memory_limit": ask(
                 "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
@@ -354,13 +349,9 @@ def build_profile_interactively(
             "Workspace read-only einhaengen",
             base.workspace_readonly,
         ),
-        "container_tmpfs_size": ask(
-            "Groesse von /tmp im Container (leer = unbegrenzt)",
-            base.container_tmpfs_size,
-        ),
-        "build_tmpfs": ask(
-            "Build-tmpfs Spec (leer = deaktiviert, z.B. /build-tmp:rw,exec,nosuid)",
-            base.build_tmpfs,
+        "tmpfs": ask(
+            "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",
+            base.tmpfs,
         ),
         "memory_limit": ask(
             "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
@@ -384,8 +375,7 @@ def build_profile_interactively(
         "root_mode": compare_base.root_mode,
         "extra_mounts_readonly": compare_base.extra_mounts_readonly,
         "workspace_readonly": compare_base.workspace_readonly,
-        "container_tmpfs_size": compare_base.container_tmpfs_size,
-        "build_tmpfs": compare_base.build_tmpfs,
+        "tmpfs": compare_base.tmpfs,
         "memory_limit": compare_base.memory_limit,
         "pids_limit": compare_base.pids_limit,
         "extra_flags": compare_base.extra_flags,

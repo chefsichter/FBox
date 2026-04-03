@@ -57,8 +57,7 @@ class AppConfig:
     root_mode: str = "root"
     extra_mounts_readonly: bool = True
     workspace_readonly: bool = False
-    container_tmpfs_size: str = ""
-    build_tmpfs: str = "/build-tmp:rw,exec,nosuid"
+    tmpfs: str = "/tmp:rw,exec,nosuid"
     memory_limit: str = ""
     pids_limit: int = 0
     extra_flags: list = field(default_factory=list)
@@ -101,10 +100,7 @@ def _config_from_dict(payload: dict) -> AppConfig:
         workspace_readonly=bool(
             payload.get("workspace_readonly", defaults.workspace_readonly)
         ),
-        container_tmpfs_size=str(
-            payload.get("container_tmpfs_size", defaults.container_tmpfs_size)
-        ),
-        build_tmpfs=str(payload.get("build_tmpfs", defaults.build_tmpfs)),
+        tmpfs=str(payload.get("tmpfs", defaults.tmpfs)),
         memory_limit=str(payload.get("memory_limit", defaults.memory_limit)),
         pids_limit=int(payload.get("pids_limit", defaults.pids_limit)),
         extra_flags=list(payload.get("extra_flags", defaults.extra_flags)),
@@ -132,6 +128,8 @@ def load_config(
     config_path: Path | None = None, profile: str | None = None
 ) -> AppConfig:
     path = config_path or get_config_file()
+    if not path.exists():
+        path = EXAMPLE_CONFIG_PATH
     if not path.exists():
         return AppConfig()
     with path.open("rb") as handle:

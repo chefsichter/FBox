@@ -119,7 +119,7 @@ def print_debug_report(
     _row("root_mode", config.root_mode)
     _row("extra_mounts_readonly", config.extra_mounts_readonly)
     _row("workspace_readonly", config.workspace_readonly)
-    _row("container_tmpfs_size", config.container_tmpfs_size or "<unlimited>")
+    _row("tmpfs", config.tmpfs or "<deaktiviert>")
     _row("editor_command", config.editor_command or "<default>")
 
     profile_names = get_profile_names(config_path)

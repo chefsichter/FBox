@@ -4,7 +4,7 @@ from fbox.config.settings import AppConfig
 from fbox.containers.docker_runtime import (
     build_create_args,
     build_mount_spec,
-    build_tmpfs_spec,
+    build_tmpfs_args,
 )
 from fbox.containers.models import ContainerRecord
 
@@ -35,5 +35,9 @@ def test_build_create_args_include_gpu_and_host_user_settings(monkeypatch) -> No
     assert any("/extra/data" in item for item in args)
 
 
-def test_build_tmpfs_spec_omits_size_when_unlimited() -> None:
-    assert build_tmpfs_spec("") == "/tmp:rw,noexec,nosuid"
+def test_build_tmpfs_args_returns_empty_when_disabled() -> None:
+    assert build_tmpfs_args("") == []
+
+
+def test_build_tmpfs_args_returns_flag_with_spec() -> None:
+    assert build_tmpfs_args("/tmp:rw,exec,nosuid") == ["--tmpfs", "/tmp:rw,exec,nosuid"]

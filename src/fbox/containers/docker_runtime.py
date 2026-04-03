@@ -130,9 +130,7 @@ def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
         config.default_network,
         "--security-opt",
         "no-new-privileges",
-        "--tmpfs",
-        build_tmpfs_spec(config.container_tmpfs_size),
-        *build_build_tmpfs_args(config.build_tmpfs),
+        *build_tmpfs_args(config.tmpfs),
         "--workdir",
         "/workspace",
         *build_user_args(config),
@@ -155,17 +153,10 @@ def build_resource_args(config: AppConfig) -> list[str]:
     return args
 
 
-def build_build_tmpfs_args(build_tmpfs: str) -> list[str]:
-    if not build_tmpfs:
+def build_tmpfs_args(tmpfs: str) -> list[str]:
+    if not tmpfs:
         return []
-    return ["--tmpfs", build_tmpfs]
-
-
-def build_tmpfs_spec(container_tmpfs_size: str) -> str:
-    base_spec = "/tmp:rw,noexec,nosuid"
-    if not container_tmpfs_size:
-        return base_spec
-    return f"{base_spec},size={container_tmpfs_size}"
+    return ["--tmpfs", tmpfs]
 
 
 def build_mount_args(

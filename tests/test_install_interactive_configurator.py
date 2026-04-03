@@ -11,7 +11,7 @@ def test_build_config_interactively_uses_defaults_on_eof(monkeypatch) -> None:
     assert 'gpu_vendor = "none"' in rendered
     assert 'default_network = "bridge"' in rendered
     assert "workspace_readonly = false" in rendered
-    assert 'container_tmpfs_size = ""' in rendered
+    assert 'tmpfs = "/tmp:rw,exec,nosuid"' in rendered
     assert 'editor_command = "code --wait"' in rendered
     assert 'install_wrapper_path = "~/.local/bin/fbox"' in rendered
     assert wrapper_path == "~/.local/bin/fbox"
