@@ -55,9 +55,9 @@ Windows PowerShell:
 ## Verwendung
 
 ```text
-usage: fbox [PFAD|NAME] [-i IMAGE]
-       fbox ls
-       fbox rm ID
+usage: fbox [PFAD|NAME] [-p PROFIL]
+       fbox ls | inspect ID | rm ID
+       fbox profiles ls | default PID | new | edit PID | rm PID
 ```
 
 ### Container starten oder erstellen
@@ -68,8 +68,19 @@ fbox /pfad/zum/projekt      # bestimmtes Verzeichnis
 fbox mein-container         # bekannten Container direkt oeffnen
 ```
 
-Beim ersten Mal wird nach einem Container-Namen und optionalen Extra-Mounts gefragt.
+Beim ersten Mal wird nach dem Profil, einem Container-Namen und optionalen Extra-Mounts gefragt.
 Danach wird der Container bei jedem Aufruf direkt geoeffnet.
+
+### Profile
+
+```bash
+fbox profiles ls           # Profile anzeigen
+fbox profiles default 2    # Standard-Profil setzen
+fbox profiles new          # Profil anlegen
+fbox profiles edit 2       # Profil bearbeiten
+fbox profiles rm 2         # Profil loeschen
+fbox pf ls                 # Kurzform fuer profiles
+```
 
 ### Container verwalten
 
@@ -89,7 +100,7 @@ fbox -d                     # Diagnose: Pfade, Config, Container-Status, docker-
 
 | Option | Beschreibung |
 |---|---|
-| `-i IMAGE` | Docker-Image fuer neue Container |
+| `-p, --profile` | Profil fuer diesen Aufruf direkt vorgeben |
 | `-c, --config` | Konfiguration im Editor oeffnen |
 | `-d, --debug` | Diagnose-Informationen anzeigen |
 | `-h, --help` | Hilfe anzeigen |

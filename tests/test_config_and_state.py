@@ -61,6 +61,7 @@ def test_container_state_store_roundtrip(tmp_path: Path) -> None:
         image="ubuntu:24.04",
         container_id="123",
         extra_mounts=["/tmp/data"],
+        profile_name="sandbox",
     )
 
     store.upsert(record)
@@ -68,6 +69,7 @@ def test_container_state_store_roundtrip(tmp_path: Path) -> None:
     loaded = store.load()
     assert len(loaded) == 1
     assert loaded[0].name == "fbox-demo"
+    assert loaded[0].profile_name == "sandbox"
     assert store.find_by_name("fbox-demo") is not None
     assert store.find_by_project_path(Path("/tmp/demo")) is not None
 

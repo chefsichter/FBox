@@ -28,7 +28,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from fbox.cli.interactive_prompts import prompt_container_name, prompt_extra_mounts
+from fbox.cli.interactive_prompts import (
+    prompt_container_name,
+    prompt_extra_mounts,
+    prompt_profile_name,
+)
 from fbox.cli.status_views import (
     get_indexed_records,
     print_container_inspect,
@@ -38,6 +42,7 @@ from fbox.cli.status_views import (
 )
 from fbox.config.editing import edit_config, get_config_path
 from fbox.config.files import ensure_config_exists
+from fbox.config.profile_store import get_default_profile_name, get_profile_names
 from fbox.config.settings import AppConfig, load_config
 from fbox.containers.docker_runtime import (
     DockerRuntimeError,
@@ -79,7 +84,7 @@ def main() -> None:
             raise SystemExit(
                 f"Kein bekannter fbox-Container gefunden: {container_name}"
             )
-        raise SystemExit(create_new_container(store, project_path, config))
+        raise SystemExit(create_new_container(store, project_path, profile))
     except (DockerRuntimeError, ValueError) as error:
         print(f"fbox: {error}", file=sys.stderr)
         raise SystemExit(1) from error
@@ -100,7 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
         usage=(
             "fbox [PFAD|NAME] [-p PROFIL]\n"
             "       fbox ls | inspect ID | rm ID\n"
-            "       fbox profile ls | default PID | new | edit PID | rm PID"
+            "       fbox profiles ls | default PID | new | edit PID | rm PID"
         ),
         description="Persistente Docker-Arbeitsboxen verwalten.",
         epilog=(
@@ -109,11 +114,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "  fbox ls                    Alle bekannten Container auflisten\n"
             "  fbox inspect ID            Details + exakte Create-Args anzeigen\n"
             "  fbox rm ID                 Container nach ID aus 'fbox ls' loeschen\n"
-            "  fbox profile ls            Profile auflisten + Standard anzeigen\n"
-            "  fbox profile default PID   Standard-Profil setzen (none = keins)\n"
-            "  fbox profile new           Neues Profil interaktiv erstellen\n"
-            "  fbox profile edit PID      Bestehendes Profil neu konfigurieren\n"
-            "  fbox profile rm PID        Profil loeschen\n"
+            "  fbox profiles ls           Profile auflisten + Standard anzeigen\n"
+            "  fbox profiles default PID  Standard-Profil setzen (none = keins)\n"
+            "  fbox profiles new          Neues Profil interaktiv erstellen\n"
+            "  fbox profiles edit PID     Bestehendes Profil neu konfigurieren\n"
+            "  fbox profiles rm PID       Profil loeschen\n"
+            "  fbox pf ...                Kurzform fuer 'profiles'\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
@@ -157,26 +163,26 @@ def _resolve_positionals(
         pass
     elif words == ["ls"]:
         raw.ls = True
-    elif words[0] == "profile":
+    elif words[0] in {"profile", "profiles", "pf"}:
         sub = words[1:]
         if not sub or sub == ["ls"]:
             raw.profile_cmd = ("ls",)
         elif sub[0] == "default":
             if len(sub) < 2:
-                parser.error("profile default: PID fehlt")
+                parser.error(f"{words[0]} default: PID fehlt")
             raw.profile_cmd = ("default", sub[1])
         elif sub == ["new"]:
             raw.profile_cmd = ("new",)
         elif sub[0] == "edit":
             if len(sub) < 2:
-                parser.error("profile edit: PID fehlt")
+                parser.error(f"{words[0]} edit: PID fehlt")
             raw.profile_cmd = ("edit", sub[1])
         elif sub[0] == "rm":
             if len(sub) < 2:
-                parser.error("profile rm: PID fehlt")
+                parser.error(f"{words[0]} rm: PID fehlt")
             raw.profile_cmd = ("rm", sub[1])
         else:
-            parser.error(f"Unbekannter profile-Befehl: {' '.join(sub)}")
+            parser.error(f"Unbekannter {words[0]}-Befehl: {' '.join(sub)}")
     elif words[0] in {"rm", "inspect"}:
         cmd = words[0]
         if len(words) < 2:
@@ -222,7 +228,7 @@ def maybe_handle_config_flags(
     return None
 
 
-def _dispatch_profile_cmd(profile_cmd: tuple, config: AppConfig) -> int:
+def _dispatch_profile_cmd(profile_cmd: tuple[str, ...], config: AppConfig) -> int:
     from fbox.cli.profile_commands import (
         cmd_profile_edit,
         cmd_profile_ls,
@@ -291,8 +297,11 @@ def reuse_by_project_path(
     record = _drop_stale_record(store, store.find_by_project_path(project_path))
     if record is not None:
         if record.create_args:
-            print_create_args(record.create_args, "📦 Willkommen zurueck in deiner Box ...")
-        return start_and_open(record.name, config)
+            print_create_args(
+                record.create_args,
+                "📦 Willkommen zurueck in deiner Box ...",
+            )
+        return start_and_open(record.name, _resolve_runtime_config(record, config))
     existing_name = find_container_by_label("ch.fbox.project_path", str(project_path))
     if existing_name is None:
         return None
@@ -307,35 +316,62 @@ def reuse_by_container_name(
     record = _drop_stale_record(store, store.find_by_name(container_name))
     if record is not None:
         if record.create_args:
-            print_create_args(record.create_args, "📦 Willkommen zurueck in deiner Box ...")
-        return start_and_open(record.name, config)
+            print_create_args(
+                record.create_args,
+                "📦 Willkommen zurueck in deiner Box ...",
+            )
+        return start_and_open(record.name, _resolve_runtime_config(record, config))
     if container_exists(container_name):
         return start_and_open(container_name, config)
     return None
 
 
+def _resolve_runtime_config(record: ContainerRecord, fallback: AppConfig) -> AppConfig:
+    if not record.profile_name:
+        return fallback
+    return load_config(profile=record.profile_name)
+
+
+def _select_config_for_new_container(
+    requested_profile: str | None,
+) -> tuple[str, AppConfig]:
+    if requested_profile is not None:
+        normalized = "" if requested_profile == "none" else requested_profile
+        return normalized, load_config(profile=requested_profile)
+    profile_names = get_profile_names(get_config_path())
+    default_profile = get_default_profile_name(get_config_path())
+    selected_profile = prompt_profile_name(profile_names, default_profile)
+    if not selected_profile:
+        return "", load_config(profile="none")
+    return selected_profile, load_config(profile=selected_profile)
+
+
 def create_new_container(
     store: ContainerStateStore,
     project_path: Path,
-    config: AppConfig,
+    requested_profile: str | None,
 ) -> int:
     resolved_path = project_path.resolve()
+    selected_profile, selected_config = _select_config_for_new_container(
+        requested_profile
+    )
     container_name = prompt_container_name(resolved_path)
     if container_exists(container_name):
-        return start_and_open(container_name, config)
+        return start_and_open(container_name, selected_config)
     record = ContainerRecord(
         name=container_name,
         project_path=str(resolved_path),
-        image=config.default_image,
+        image=selected_config.default_image,
         container_id=None,
         extra_mounts=validate_mounts(resolved_path, prompt_extra_mounts()),
-        extra_mounts_readonly=config.extra_mounts_readonly,
+        profile_name=selected_profile,
+        extra_mounts_readonly=selected_config.extra_mounts_readonly,
     )
-    record.create_args = ["docker"] + build_create_args(config, record)
+    record.create_args = ["docker"] + build_create_args(selected_config, record)
     print_create_args(record.create_args, "🚀 Richte deine neue Box ein ...")
-    record.container_id = create_container(record, config)
+    record.container_id = create_container(record, selected_config)
     store.upsert(record)
-    return start_and_open(record.name, config)
+    return start_and_open(record.name, selected_config)
 
 
 def start_and_open(container_name: str, config: AppConfig) -> int:

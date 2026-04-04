@@ -32,6 +32,7 @@ class ContainerRecord:
     image: str
     container_id: str | None
     extra_mounts: list[str]
+    profile_name: str = ""
     extra_mounts_readonly: bool = True
     create_args: list[str] | None = None
 
@@ -41,6 +42,7 @@ class ContainerRecord:
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> ContainerRecord:
         extra_mounts_payload = payload.get("extra_mounts", [])
+        create_args_payload = payload.get("create_args")
         if not isinstance(extra_mounts_payload, list):
             extra_mounts_payload = []
         return cls(
@@ -51,10 +53,11 @@ class ContainerRecord:
                 str(payload["container_id"]) if payload.get("container_id") else None
             ),
             extra_mounts=[str(item) for item in extra_mounts_payload],
+            profile_name=str(payload.get("profile_name", "")),
             extra_mounts_readonly=bool(payload.get("extra_mounts_readonly", True)),
             create_args=(
-                [str(a) for a in payload["create_args"]]
-                if isinstance(payload.get("create_args"), list)
+                [str(arg) for arg in create_args_payload]
+                if isinstance(create_args_payload, list)
                 else None
             ),
         )

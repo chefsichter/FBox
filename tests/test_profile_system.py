@@ -365,8 +365,20 @@ class TestProfileSubcommandParsing:
         args = self._parse(["profile"])
         assert args.profile_cmd == ("ls",)
 
+    def test_profiles_bare(self) -> None:
+        args = self._parse(["profiles"])
+        assert args.profile_cmd == ("ls",)
+
+    def test_pf_bare(self) -> None:
+        args = self._parse(["pf"])
+        assert args.profile_cmd == ("ls",)
+
     def test_profile_default(self) -> None:
         args = self._parse(["profile", "default", "sandbox"])
+        assert args.profile_cmd == ("default", "sandbox")
+
+    def test_profiles_default(self) -> None:
+        args = self._parse(["profiles", "default", "sandbox"])
         assert args.profile_cmd == ("default", "sandbox")
 
     def test_profile_new(self) -> None:

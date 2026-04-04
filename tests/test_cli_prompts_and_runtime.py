@@ -7,6 +7,7 @@ from fbox.cli.interactive_prompts import (
     build_default_name,
     prompt_container_name,
     prompt_extra_mounts,
+    prompt_profile_name,
 )
 from fbox.config.settings import AppConfig
 from fbox.containers import docker_runtime
@@ -42,6 +43,22 @@ def test_prompt_extra_mounts_splits_and_strips(monkeypatch) -> None:
     result = prompt_extra_mounts()
 
     assert result == ["/tmp/a", "/tmp/b"]
+
+
+def test_prompt_profile_name_uses_default_on_empty_input(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    result = prompt_profile_name(["sandbox", "llm"], "llm")
+
+    assert result == "llm"
+
+
+def test_prompt_profile_name_accepts_pid(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _: "1")
+
+    result = prompt_profile_name(["sandbox", "llm"], "")
+
+    assert result == "sandbox"
 
 
 def test_require_docker_raises_when_binary_missing(monkeypatch) -> None:

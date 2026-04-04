@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from fbox.cli.interactive_prompts import prompt_text
 from fbox.config.profile_store import (
     delete_profile,
     format_full_profile_config,
@@ -54,21 +55,25 @@ def cmd_profile_ls(config_path: Path) -> int:
 
     while True:
         try:
-            raw = input("\nProfil-Details anzeigen (PID, Enter zum Beenden): ").strip()
+            raw = prompt_text(
+                "\nProfil-Details anzeigen (PID, Enter zum Beenden): "
+            )
         except EOFError:
+            break
+        except KeyboardInterrupt:
             break
         if not raw:
             break
         if raw == "0":
             print(format_full_profile_config("default", {}, base))
             continue
-        name = _resolve_pid_or_name(names, raw)
-        if name is None:
+        resolved_name = _resolve_pid_or_name(names, raw)
+        if resolved_name is None:
             print(f"  Unbekannte PID: {raw}")
             continue
-        overrides = get_profile_overrides(config_path, name)
+        overrides = get_profile_overrides(config_path, resolved_name)
         merged = _apply_overrides(base, overrides)
-        print(format_full_profile_config(name, overrides, merged))
+        print(format_full_profile_config(resolved_name, overrides, merged))
     return 0
 
 
@@ -89,10 +94,13 @@ def cmd_profile_set_default(config_path: Path, pid_or_name: str) -> int:
 
 def cmd_profile_new(config_path: Path, base_config: AppConfig) -> int:
     try:
-        name = input("Profilname: ").strip()
+        name = prompt_text("Profilname: ")
     except EOFError:
         print("\nAbgebrochen.", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        print("\nAbgebrochen.", file=sys.stderr)
+        return 130
     if not name:
         print("fbox: Profilname darf nicht leer sein.", file=sys.stderr)
         return 1
@@ -100,7 +108,7 @@ def cmd_profile_new(config_path: Path, base_config: AppConfig) -> int:
     if name in existing:
         print(
             f"fbox: Profil '{name}' existiert bereits. "
-            f"Nutze 'fbox profile edit {name}'.",
+            f"Nutze 'fbox profiles edit {name}'.",
             file=sys.stderr,
         )
         return 1
@@ -110,7 +118,11 @@ def cmd_profile_new(config_path: Path, base_config: AppConfig) -> int:
     return 0
 
 
-def cmd_profile_edit(config_path: Path, pid_or_name: str, base_config: AppConfig) -> int:
+def cmd_profile_edit(
+    config_path: Path,
+    pid_or_name: str,
+    base_config: AppConfig,
+) -> int:
     existing = get_profile_names(config_path)
     name = _resolve_pid_or_name(existing, pid_or_name)
     if name is None:
@@ -119,7 +131,11 @@ def cmd_profile_edit(config_path: Path, pid_or_name: str, base_config: AppConfig
     from fbox.config.settings import _apply_overrides
     current_overrides = get_profile_overrides(config_path, name)
     effective_base = _apply_overrides(base_config, current_overrides)
-    overrides = build_profile_interactively(name, effective_base, compare_base=base_config)
+    overrides = build_profile_interactively(
+        name,
+        effective_base,
+        compare_base=base_config,
+    )
     upsert_profile(config_path, name, overrides)
     print(f"Profil '{name}' aktualisiert.")
     return 0

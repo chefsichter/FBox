@@ -41,7 +41,6 @@ pids_limit = 512
 default_network = "bridge"
 root_mode = "root"
 tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
-memory_limit = "16g"
 extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]
 
 [profiles.rocm]
@@ -50,5 +49,4 @@ default_network = "bridge"
 root_mode = "root"
 gpu_vendor = "amd"
 tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
-memory_limit = "16g"
 extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]

@@ -142,6 +142,14 @@ def test_reuse_by_container_name_cleans_stale_state(monkeypatch) -> None:
 
 def test_create_new_container_builds_record(monkeypatch) -> None:
     store = FakeStore()
+    monkeypatch.setattr(
+        cli_main,
+        "_select_config_for_new_container",
+        lambda requested_profile: (
+            "sandbox",
+            AppConfig(default_image="ubuntu:24.04", extra_mounts_readonly=True),
+        ),
+    )
     monkeypatch.setattr(cli_main, "prompt_container_name", lambda path: "fbox-demo")
     monkeypatch.setattr(cli_main, "prompt_extra_mounts", lambda: ["/tmp/data"])
     monkeypatch.setattr(
@@ -164,6 +172,36 @@ def test_create_new_container_builds_record(monkeypatch) -> None:
     assert store.saved_record is not None
     assert store.saved_record.container_id == "abc123"
     assert store.saved_record.extra_mounts == [str(Path("/tmp/data").resolve())]
+    assert store.saved_record.profile_name == "sandbox"
+
+
+def test_reuse_by_project_path_uses_record_profile_config(monkeypatch) -> None:
+    record = ContainerRecord(
+        name="fbox-demo",
+        project_path="/tmp/demo",
+        image="ubuntu:24.04",
+        container_id=None,
+        extra_mounts=[],
+        profile_name="sandbox",
+    )
+    store = FakeStore(record_by_path=record)
+    captured: list[AppConfig] = []
+    monkeypatch.setattr(cli_main, "container_exists", lambda name: True)
+    monkeypatch.setattr(
+        cli_main,
+        "load_config",
+        lambda **kwargs: AppConfig(default_shell="/bin/zsh"),
+    )
+    monkeypatch.setattr(
+        cli_main,
+        "start_and_open",
+        lambda name, config: captured.append(config) or 23,
+    )
+
+    result = cli_main.reuse_by_project_path(store, Path("/tmp/demo"), AppConfig())
+
+    assert result == 23
+    assert captured[0].default_shell == "/bin/zsh"
 
 
 def test_start_and_open_starts_before_opening(monkeypatch) -> None:
