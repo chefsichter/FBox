@@ -3,17 +3,30 @@
 
 default_profile = ""           # Profil das ohne -p verwendet wird ("" = kein Profil)
 
-# Basis-Einstellungen — gelten fuer alle Profile, sofern nicht ueberschrieben
+# --- Container ---
 default_image = "ubuntu:24.04"
 default_shell = "/bin/bash"
+
+# --- Netzwerk ---
 default_network = "bridge"
-gpu_vendor = "none"
+
+# --- Sicherheit / Berechtigungen ---
 root_mode = "root"
-extra_mounts_readonly = true
+gpu_vendor = "none"
+
+# --- Dateisystem ---
 workspace_readonly = false
-tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
+extra_mounts_readonly = true
+tmpfs = "/tmp:rw,noexec,nosuid"  # leer = deaktiviert
+
+# --- Ressourcen ---
 memory_limit = ""              # z.B. "4g", "" = kein Limit
 pids_limit = 0                 # 0 = kein Limit
+
+# --- Erweitert ---
+extra_flags = []
+
+# --- Werkzeug / Installation ---
 editor_command = "code --wait"
 install_wrapper_path = "~/.local/bin/fbox"
 
@@ -24,23 +37,18 @@ workspace_readonly = true
 memory_limit = "4g"
 pids_limit = 512
 
-[profiles.bridge-sandbox]
-default_network = "bridge"
-root_mode = "host-user"
-workspace_readonly = false
-memory_limit = "4g"
-pids_limit = 512
-
 [profiles.llm]
 default_network = "bridge"
 root_mode = "root"
+tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
 memory_limit = "16g"
 extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]
 
-[profiles.amd-llm]
+[profiles.rocm]
 default_image = "rocm/dev-ubuntu-24.04:latest"
-gpu_vendor = "amd"
 default_network = "bridge"
 root_mode = "root"
+gpu_vendor = "amd"
+tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
 memory_limit = "16g"
 extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]

@@ -36,6 +36,39 @@ from fbox.config.profile_store import (
 )
 from fbox.config.settings import EXAMPLE_CONFIG_PATH, AppConfig, _apply_overrides
 
+
+def _collect_config_values(
+    image: str,
+    shell: str,
+    network: str,
+    root_mode: str,
+    gpu_vendor: str,
+    workspace_readonly: bool,
+    extra_mounts_readonly: bool,
+    tmpfs: str,
+    memory_limit: str,
+    pids_limit: int,
+    extra_flags: list,
+    editor_command: str,
+    install_wrapper_path: str,
+) -> dict[str, object]:
+    return {
+        "default_image": image,
+        "default_shell": shell,
+        "default_network": network,
+        "root_mode": root_mode,
+        "gpu_vendor": gpu_vendor,
+        "workspace_readonly": workspace_readonly,
+        "extra_mounts_readonly": extra_mounts_readonly,
+        "tmpfs": tmpfs,
+        "memory_limit": memory_limit,
+        "pids_limit": pids_limit,
+        "extra_flags": extra_flags,
+        "editor_command": editor_command,
+        "install_wrapper_path": install_wrapper_path,
+    }
+
+
 _DEFAULT_WRAPPER_PATH = (
     "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
 )
@@ -94,21 +127,69 @@ def ask_choice(prompt: str, default: str, options: list[str]) -> str:
 
 def _values_from_config(d: AppConfig) -> dict[str, object]:
     """Baut das values-Dict aus einer AppConfig ohne interaktive Fragen."""
-    return {
-        "default_image": d.default_image,
-        "default_shell": d.default_shell,
-        "default_network": d.default_network,
-        "gpu_vendor": d.gpu_vendor,
-        "root_mode": d.root_mode,
-        "extra_mounts_readonly": d.extra_mounts_readonly,
-        "workspace_readonly": d.workspace_readonly,
-        "tmpfs": d.tmpfs,
-        "memory_limit": d.memory_limit,
-        "pids_limit": d.pids_limit,
-        "extra_flags": d.extra_flags,
-        "editor_command": "code --wait",
-        "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
-    }
+    return _collect_config_values(
+        image=d.default_image,
+        shell=d.default_shell,
+        network=d.default_network,
+        root_mode=d.root_mode,
+        gpu_vendor=d.gpu_vendor,
+        workspace_readonly=d.workspace_readonly,
+        extra_mounts_readonly=d.extra_mounts_readonly,
+        tmpfs=d.tmpfs,
+        memory_limit=d.memory_limit,
+        pids_limit=d.pids_limit,
+        extra_flags=d.extra_flags,
+        editor_command="code --wait",
+        install_wrapper_path=_DEFAULT_WRAPPER_PATH,
+    )
+
+
+def _ask_config_questions(base: AppConfig) -> dict[str, object]:
+    """Stellt die interaktiven Konfigurationsfragen und gibt das values-Dict zurueck."""
+    return _collect_config_values(
+        image=ask("Docker-Image fuer neue Container", base.default_image),
+        shell=ask("Shell fuer `docker exec`", base.default_shell),
+        network=ask_choice(
+            "Netzwerk-Standard fuer neue Container",
+            base.default_network,
+            ["none", "bridge", "host"],
+        ),
+        root_mode=ask_choice(
+            "Container standardmaessig als root oder mit deinem Host-User starten",
+            base.root_mode,
+            ["root", "host-user"],
+        ),
+        gpu_vendor=ask_choice(
+            "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
+            base.gpu_vendor,
+            ["none", "nvidia", "amd"],
+        ),
+        workspace_readonly=ask_bool(
+            "Workspace read-only einhaengen",
+            base.workspace_readonly,
+        ),
+        extra_mounts_readonly=ask_bool(
+            "Zusatz-Mounts standardmaessig read-only einhaengen",
+            base.extra_mounts_readonly,
+        ),
+        tmpfs=ask(
+            "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",
+            base.tmpfs,
+        ),
+        memory_limit=ask(
+            "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
+            base.memory_limit,
+        ),
+        pids_limit=int(
+            ask("PID-Limit fuer Container (0 = unbegrenzt)", str(base.pids_limit))
+        ),
+        extra_flags=ask_flags(
+            "Zusaetzliche Docker-Flags (z.B. --cap-add CHOWN --cap-add FOWNER)",
+            base.extra_flags,
+        ),
+        editor_command="",
+        install_wrapper_path="",
+    )
 
 
 def build_config_interactively(default_target: Path) -> tuple[str, str]:
@@ -118,50 +199,9 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
     if direct:
         values = _values_from_config(d)
     else:
-        values = {
-            "default_image": ask("Docker-Image fuer neue Container", d.default_image),
-            "default_shell": ask("Shell fuer `docker exec`", d.default_shell),
-            "default_network": ask_choice(
-                "Netzwerk-Standard fuer neue Container",
-                d.default_network,
-                ["none", "bridge", "host"],
-            ),
-            "gpu_vendor": ask_choice(
-                "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
-                d.gpu_vendor,
-                ["none", "nvidia", "amd"],
-            ),
-            "root_mode": ask_choice(
-                "Container standardmaessig als root oder mit deinem Host-User starten",
-                d.root_mode,
-                ["root", "host-user"],
-            ),
-            "extra_mounts_readonly": ask_bool(
-                "Zusatz-Mounts standardmaessig read-only einhaengen",
-                d.extra_mounts_readonly,
-            ),
-            "workspace_readonly": ask_bool(
-                "Workspace read-only einhaengen",
-                d.workspace_readonly,
-            ),
-            "tmpfs": ask(
-                "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",
-                d.tmpfs,
-            ),
-            "memory_limit": ask(
-                "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
-                d.memory_limit,
-            ),
-            "pids_limit": int(
-                ask("PID-Limit fuer Container (0 = unbegrenzt)", str(d.pids_limit))
-            ),
-            "extra_flags": ask_flags(
-                "Zusaetzliche Docker-Flags (z.B. --cap-add CHOWN --cap-add FOWNER)",
-                d.extra_flags,
-            ),
-            "editor_command": ask("Editor fuer `fbox --config`", "code --wait"),
-            "install_wrapper_path": _DEFAULT_WRAPPER_PATH,
-        }
+        values = _ask_config_questions(d)
+        values["editor_command"] = ask("Editor fuer `fbox --config`", "code --wait")
+        values["install_wrapper_path"] = _DEFAULT_WRAPPER_PATH
 
     rendered = render_full_config(values, example_profiles, chosen_profile)
     return rendered, _DEFAULT_WRAPPER_PATH
@@ -317,70 +357,13 @@ def build_profile_interactively(
     """
     if compare_base is None:
         compare_base = base
-    questions: dict[str, object] = {
-        "default_image": ask(
-            "Docker-Image fuer neue Container",
-            base.default_image,
-        ),
-        "default_shell": ask(
-            "Shell fuer `docker exec`",
-            base.default_shell,
-        ),
-        "default_network": ask_choice(
-            "Netzwerk-Standard fuer neue Container",
-            base.default_network,
-            ["none", "bridge", "host"],
-        ),
-        "gpu_vendor": ask_choice(
-            "GPU-Hersteller (none = keine GPU, nvidia = CUDA, amd = ROCm)",
-            base.gpu_vendor,
-            ["none", "nvidia", "amd"],
-        ),
-        "root_mode": ask_choice(
-            "Container standardmaessig als root oder mit deinem Host-User starten",
-            base.root_mode,
-            ["root", "host-user"],
-        ),
-        "extra_mounts_readonly": ask_bool(
-            "Zusatz-Mounts standardmaessig read-only einhaengen",
-            base.extra_mounts_readonly,
-        ),
-        "workspace_readonly": ask_bool(
-            "Workspace read-only einhaengen",
-            base.workspace_readonly,
-        ),
-        "tmpfs": ask(
-            "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",
-            base.tmpfs,
-        ),
-        "memory_limit": ask(
-            "Speicher-Limit fuer Container (leer = unbegrenzt, z.B. 4g)",
-            base.memory_limit,
-        ),
-        "pids_limit": int(
-            ask("PID-Limit fuer Container (0 = unbegrenzt)", str(base.pids_limit))
-        ),
-        "extra_flags": ask_flags(
-            "Zusaetzliche Docker-Flags (z.B. --cap-add CHOWN --cap-add FOWNER)",
-            base.extra_flags,
-        ),
-    }
+    questions = _ask_config_questions(base)
+    base_dict = _values_from_config(compare_base)
     # Return only fields that differ from compare_base (original base without profile)
     overrides: dict[str, object] = {}
-    base_dict = {
-        "default_image": compare_base.default_image,
-        "default_shell": compare_base.default_shell,
-        "default_network": compare_base.default_network,
-        "gpu_vendor": compare_base.gpu_vendor,
-        "root_mode": compare_base.root_mode,
-        "extra_mounts_readonly": compare_base.extra_mounts_readonly,
-        "workspace_readonly": compare_base.workspace_readonly,
-        "tmpfs": compare_base.tmpfs,
-        "memory_limit": compare_base.memory_limit,
-        "pids_limit": compare_base.pids_limit,
-        "extra_flags": compare_base.extra_flags,
-    }
     for key, value in questions.items():
+        if key in {"editor_command", "install_wrapper_path"}:
+            continue
         if value != base_dict[key]:
             overrides[key] = value
     return overrides

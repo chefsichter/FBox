@@ -36,6 +36,7 @@ from fbox.config.settings import (
     AppConfig,
     get_config_file,
     get_state_file,
+    iter_ordered_config_items,
 )
 from fbox.containers.docker_runtime import (
     build_create_args,
@@ -112,15 +113,23 @@ def print_debug_report(
     _row("wrapper", f"{wrapper_path}  ({'ok' if wrapper_path.exists() else 'missing'})")
 
     _section("Config")
-    _row("default_image", config.default_image)
-    _row("default_shell", config.default_shell)
-    _row("default_network", config.default_network)
-    _row("gpu_vendor", config.gpu_vendor)
-    _row("root_mode", config.root_mode)
-    _row("extra_mounts_readonly", config.extra_mounts_readonly)
-    _row("workspace_readonly", config.workspace_readonly)
-    _row("tmpfs", config.tmpfs or "<deaktiviert>")
-    _row("editor_command", config.editor_command or "<default>")
+    config_rows = {
+        "default_image": config.default_image,
+        "default_shell": config.default_shell,
+        "default_network": config.default_network,
+        "root_mode": config.root_mode,
+        "gpu_vendor": config.gpu_vendor,
+        "workspace_readonly": config.workspace_readonly,
+        "extra_mounts_readonly": config.extra_mounts_readonly,
+        "tmpfs": config.tmpfs or "<deaktiviert>",
+        "memory_limit": config.memory_limit or "<none>",
+        "pids_limit": config.pids_limit,
+        "extra_flags": config.extra_flags or "<none>",
+        "editor_command": config.editor_command or "<default>",
+        "install_wrapper_path": config.install_wrapper_path,
+    }
+    for key, value in iter_ordered_config_items(config_rows):
+        _row(key, value)
 
     profile_names = get_profile_names(config_path)
     default_profile = get_default_profile_name(config_path)
@@ -131,7 +140,7 @@ def print_debug_report(
         marker = " (default)" if name == default_profile else ""
         overrides = get_profile_overrides(config_path, name)
         print(f"  [{name}]{marker}")
-        for key, value in overrides.items():
+        for key, value in iter_ordered_config_items(overrides):
             _row(key, value, width=28)
     if not default_profile:
         _row("default_profile", "<none>", width=28)

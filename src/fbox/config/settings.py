@@ -46,17 +46,15 @@ DEFAULT_WRAPPER_PATH = (
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[3] / "config" / "fbox.example.toml"
 )
-
-
 @dataclass(slots=True)
 class AppConfig:
     default_image: str = DEFAULT_IMAGE
     default_shell: str = DEFAULT_SHELL
     default_network: str = "bridge"
-    gpu_vendor: str = "none"
     root_mode: str = "root"
-    extra_mounts_readonly: bool = True
+    gpu_vendor: str = "none"
     workspace_readonly: bool = False
+    extra_mounts_readonly: bool = True
     tmpfs: str = "/tmp:rw,exec,nosuid"
     memory_limit: str = ""
     pids_limit: int = 0
@@ -67,6 +65,9 @@ class AppConfig:
     @property
     def run_as_root(self) -> bool:
         return self.root_mode == "root"
+
+
+CONFIG_FIELD_ORDER = [f.name for f in fields(AppConfig)]
 
 
 def get_config_file() -> Path:
@@ -161,3 +162,11 @@ def resolve_editor_command(config: AppConfig) -> str:
     if config.editor_command:
         return config.editor_command
     return os.environ.get("VISUAL") or os.environ.get("EDITOR") or DEFAULT_EDITOR
+
+
+def iter_ordered_config_items(values: dict[str, object]) -> list[tuple[str, object]]:
+    ordered = [(key, values[key]) for key in CONFIG_FIELD_ORDER if key in values]
+    extra = [
+        (key, value) for key, value in values.items() if key not in CONFIG_FIELD_ORDER
+    ]
+    return ordered + extra

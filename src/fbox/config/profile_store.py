@@ -9,7 +9,11 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from fbox.config.settings import DEFAULT_PROFILE_KEY
+from fbox.config.settings import (
+    CONFIG_FIELD_ORDER,
+    DEFAULT_PROFILE_KEY,
+    iter_ordered_config_items,
+)
 
 # ---------------------------------------------------------------------------
 # Read helpers
@@ -104,11 +108,7 @@ def _render_value(value: object) -> str:
     return f'"{escaped}"'
 
 
-_PREVIEW_FIELDS = [
-    "default_image", "default_shell", "default_network", "gpu_vendor",
-    "root_mode", "extra_mounts_readonly", "workspace_readonly",
-    "tmpfs", "memory_limit", "pids_limit", "extra_flags",
-]
+_PREVIEW_FIELDS = CONFIG_FIELD_ORDER
 
 
 def format_full_profile_config(name: str, overrides: dict, merged: object) -> str:
@@ -133,8 +133,9 @@ def format_profile_overrides(name: str, overrides: dict) -> str:
     if not overrides:
         lines.append("  (keine Einstellungen - entspricht Basis-Konfiguration)")
     else:
-        width = max(len(k) for k in overrides)
-        for k, v in overrides.items():
+        ordered_overrides = iter_ordered_config_items(overrides)
+        width = max(len(k) for k, _ in ordered_overrides)
+        for k, v in ordered_overrides:
             lines.append(f"  {k:<{width}} = {_render_value(v)}")
     return "\n".join(lines)
 
@@ -155,14 +156,14 @@ def render_full_config(
     lines.append("")
 
     # Base key-value pairs
-    for key, value in base_values.items():
+    for key, value in iter_ordered_config_items(base_values):
         lines.append(f"{key} = {_render_value(value)}")
     lines.append("")
 
     # Profile sections
     for profile_name, overrides in profiles.items():
         lines.append(f"[profiles.{profile_name}]")
-        for key, value in overrides.items():
+        for key, value in iter_ordered_config_items(overrides):
             lines.append(f"{key} = {_render_value(value)}")
         lines.append("")
 
