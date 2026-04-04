@@ -142,6 +142,8 @@ def test_reuse_by_container_name_cleans_stale_state(monkeypatch) -> None:
 
 def test_create_new_container_builds_record(monkeypatch) -> None:
     store = FakeStore()
+    monkeypatch.setattr(cli_main, "prompt_container_name", lambda path: "fbox-demo")
+    monkeypatch.setattr(cli_main, "container_exists", lambda name: False)
     monkeypatch.setattr(
         cli_main,
         "_select_config_for_new_container",
@@ -150,14 +152,12 @@ def test_create_new_container_builds_record(monkeypatch) -> None:
             AppConfig(default_image="ubuntu:24.04", extra_mounts_readonly=True),
         ),
     )
-    monkeypatch.setattr(cli_main, "prompt_container_name", lambda path: "fbox-demo")
     monkeypatch.setattr(cli_main, "prompt_extra_mounts", lambda: ["/tmp/data"])
     monkeypatch.setattr(
         cli_main,
         "validate_mounts",
         lambda project, mounts: [str(Path(item).resolve()) for item in mounts],
     )
-    monkeypatch.setattr(cli_main, "container_exists", lambda name: False)
     monkeypatch.setattr(cli_main, "create_container", lambda record, config: "abc123")
     monkeypatch.setattr(cli_main, "start_and_open", lambda name, config: 17)
 
@@ -165,7 +165,6 @@ def test_create_new_container_builds_record(monkeypatch) -> None:
         store,
         Path("/tmp/project"),
         None,
-        AppConfig(default_image="ubuntu:24.04", extra_mounts_readonly=True),
     )
 
     assert result == 17

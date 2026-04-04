@@ -352,12 +352,12 @@ def create_new_container(
     requested_profile: str | None,
 ) -> int:
     resolved_path = project_path.resolve()
+    container_name = prompt_container_name(resolved_path)
+    if container_exists(container_name):
+        return start_and_open(container_name, load_config(profile=requested_profile))
     selected_profile, selected_config = _select_config_for_new_container(
         requested_profile
     )
-    container_name = prompt_container_name(resolved_path)
-    if container_exists(container_name):
-        return start_and_open(container_name, selected_config)
     record = ContainerRecord(
         name=container_name,
         project_path=str(resolved_path),
