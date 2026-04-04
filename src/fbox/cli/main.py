@@ -363,7 +363,9 @@ def create_new_container(
         project_path=str(resolved_path),
         image=selected_config.default_image,
         container_id=None,
-        extra_mounts=validate_mounts(resolved_path, prompt_extra_mounts()),
+        extra_mounts=validate_mounts(
+            resolved_path, selected_config.extra_mounts + prompt_extra_mounts()
+        ),
         profile_name=selected_profile,
         extra_mounts_readonly=selected_config.extra_mounts_readonly,
     )

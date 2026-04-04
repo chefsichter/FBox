@@ -55,6 +55,7 @@ class AppConfig:
     gpu_vendor: str = "none"
     workspace_readonly: bool = False
     extra_mounts_readonly: bool = True
+    extra_mounts: list = field(default_factory=list)
     tmpfs: str = "/tmp:rw,exec,nosuid"
     memory_limit: str = ""
     pids_limit: int = 0
@@ -101,6 +102,7 @@ def _config_from_dict(payload: dict) -> AppConfig:
         workspace_readonly=bool(
             payload.get("workspace_readonly", defaults.workspace_readonly)
         ),
+        extra_mounts=list(payload.get("extra_mounts", defaults.extra_mounts)),
         tmpfs=str(payload.get("tmpfs", defaults.tmpfs)),
         memory_limit=str(payload.get("memory_limit", defaults.memory_limit)),
         pids_limit=int(payload.get("pids_limit", defaults.pids_limit)),

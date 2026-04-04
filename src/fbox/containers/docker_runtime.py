@@ -169,16 +169,16 @@ def build_mount_args(
         "--mount",
         build_mount_spec(project_path, "/workspace", workspace_readonly),
     ]
-    for mount_path in extra_mounts:
-        resolved = Path(mount_path).resolve()
+    for mount_entry in extra_mounts:
+        parts = mount_entry.split(":", 2)
+        source = Path(parts[0])
+        destination = parts[1] if len(parts) >= 2 else f"/extra/{source.name}"
+        mode = parts[2] if len(parts) == 3 else ""
+        readonly = (mode == "ro") if mode in ("rw", "ro") else extra_mounts_readonly
         mounts.extend(
             [
                 "--mount",
-                build_mount_spec(
-                    resolved,
-                    f"/extra/{resolved.name}",
-                    extra_mounts_readonly,
-                ),
+                build_mount_spec(source, destination, readonly),
             ]
         )
     return mounts

@@ -44,7 +44,7 @@ def prompt_container_name(project_path: Path) -> str:
 
 def prompt_extra_mounts() -> list[str]:
     answer = prompt_text(
-        "Weitere Verzeichnisse mounten (mit Komma trennen, leer fuer keine): "
+        "Weitere Verzeichnisse mounten (quelle:ziel[:rw|ro], Komma trennt mehrere): "
     )
     if not answer:
         return []

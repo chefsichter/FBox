@@ -41,10 +41,22 @@ def validate_mounts(project_path: Path, mount_paths: list[str]) -> list[str]:
         raise ValueError(f"Pfad ist kein Verzeichnis: {project_path}")
     resolved_mounts: list[str] = []
     for raw_mount in mount_paths:
-        mount_path = Path(raw_mount).expanduser()
-        if not mount_path.exists():
-            raise ValueError(f"Mount existiert nicht: {raw_mount}")
-        if not mount_path.is_dir():
-            raise ValueError(f"Mount ist kein Verzeichnis: {raw_mount}")
-        resolved_mounts.append(str(mount_path.resolve()))
+        parts = raw_mount.split(":", 2)
+        raw_source = parts[0]
+        destination = parts[1] if len(parts) >= 2 else ""
+        mode = parts[2] if len(parts) == 3 else ""
+        if mode and mode not in ("rw", "ro"):
+            raise ValueError(f"Ungueltiger Mount-Modus '{mode}', erlaubt: rw, ro")
+        source = Path(raw_source).expanduser()
+        if not source.exists():
+            raise ValueError(f"Mount existiert nicht: {raw_source}")
+        if not source.is_dir():
+            raise ValueError(f"Mount ist kein Verzeichnis: {raw_source}")
+        resolved = str(source.resolve())
+        entry = resolved
+        if destination:
+            entry = f"{resolved}:{destination}"
+            if mode:
+                entry = f"{entry}:{mode}"
+        resolved_mounts.append(entry)
     return resolved_mounts

@@ -45,6 +45,7 @@ def _collect_config_values(
     gpu_vendor: str,
     workspace_readonly: bool,
     extra_mounts_readonly: bool,
+    extra_mounts: list,
     tmpfs: str,
     memory_limit: str,
     pids_limit: int,
@@ -60,6 +61,7 @@ def _collect_config_values(
         "gpu_vendor": gpu_vendor,
         "workspace_readonly": workspace_readonly,
         "extra_mounts_readonly": extra_mounts_readonly,
+        "extra_mounts": extra_mounts,
         "tmpfs": tmpfs,
         "memory_limit": memory_limit,
         "pids_limit": pids_limit,
@@ -135,6 +137,7 @@ def _values_from_config(d: AppConfig) -> dict[str, object]:
         gpu_vendor=d.gpu_vendor,
         workspace_readonly=d.workspace_readonly,
         extra_mounts_readonly=d.extra_mounts_readonly,
+        extra_mounts=d.extra_mounts,
         tmpfs=d.tmpfs,
         memory_limit=d.memory_limit,
         pids_limit=d.pids_limit,
@@ -171,6 +174,10 @@ def _ask_config_questions(base: AppConfig) -> dict[str, object]:
         extra_mounts_readonly=ask_bool(
             "Zusatz-Mounts standardmaessig read-only einhaengen",
             base.extra_mounts_readonly,
+        ),
+        extra_mounts=ask_flags(
+            "Standard-Mounts (quelle:ziel, z.B. ~/.cache/huggingface:/root/.cache/huggingface)",
+            base.extra_mounts,
         ),
         tmpfs=ask(
             "tmpfs-Mount Spec (leer = deaktiviert, z.B. /tmp:rw,noexec,nosuid)",

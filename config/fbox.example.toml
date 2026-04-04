@@ -17,6 +17,7 @@ gpu_vendor = "none"
 # --- Dateisystem ---
 workspace_readonly = false
 extra_mounts_readonly = true
+extra_mounts = []              # z.B. ["~/.cache/huggingface:/root/.cache/huggingface:rw"]
 tmpfs = "/tmp:rw,noexec,nosuid"  # leer = deaktiviert
 
 # --- Ressourcen ---
