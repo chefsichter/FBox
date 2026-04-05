@@ -115,11 +115,15 @@ Die aktive Konfiguration liegt unter `~/.config/fbox/config.toml`.
 default_image = "ubuntu:24.04"
 default_shell = "/bin/bash"
 default_network = "bridge"
-gpu_vendor = "none"           # none | nvidia | amd
 root_mode = "root"            # root | host-user
-extra_mounts_readonly = true
+gpu_vendor = "none"           # none | nvidia | amd
 workspace_readonly = false
-container_tmpfs_size = ""     # leer = unbegrenzt, z.B. "512m"
+extra_mounts_readonly = true
+extra_mounts = []             # z.B. ["~/.cache/huggingface:/root/.cache/huggingface:rw"]
+tmpfs = "/tmp:rw,noexec,nosuid"
+memory_limit = ""             # z.B. "4g", "" = kein Limit
+pids_limit = 0                # 0 = kein Limit
+extra_flags = []
 editor_command = "code --wait"
 install_wrapper_path = "~/.local/bin/fbox"
 ```
@@ -137,7 +141,28 @@ install_wrapper_path = "~/.local/bin/fbox"
 | Pfad im Container | Quelle |
 |---|---|
 | `/workspace` | Projektverzeichnis (standardmaessig schreibbar) |
-| `/extra/<dirname>` | Zusatz-Mounts (standardmaessig read-only) |
+| `/extra/<dirname>` | Zusatz-Mounts ohne explizites Ziel (Fallback) |
+
+Extra-Mounts koennen global oder pro Profil in `config.toml` definiert werden:
+
+```toml
+extra_mounts = [
+    "~/.cache/huggingface:/root/.cache/huggingface:rw",
+    "~/models:/models",
+]
+```
+
+Format: `quelle:ziel[:rw|ro]`
+
+| Format | Ziel | Read-only |
+|---|---|---|
+| `~/pfad` | `/extra/<dirname>` | gem. `extra_mounts_readonly` |
+| `~/pfad:/ziel` | `/ziel` | gem. `extra_mounts_readonly` |
+| `~/pfad:/ziel:ro` | `/ziel` | ja (immer) |
+| `~/pfad:/ziel:rw` | `/ziel` | nein (immer) |
+
+Beim Erstellen eines Containers werden Config-Mounts automatisch eingebunden.
+Der interaktive Prompt fragt danach noch nach containerspezifischen Zusatz-Mounts.
 
 ---
 
