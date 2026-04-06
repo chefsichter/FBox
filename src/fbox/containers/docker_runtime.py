@@ -106,6 +106,10 @@ def create_container(record: ContainerRecord, config: AppConfig) -> str:
     return result.stdout.strip()
 
 
+def commit_container(name: str, image: str) -> None:
+    run_docker_command(["commit", name, image], capture_output=True)
+
+
 def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
     project_path = Path(record.project_path)
     mounts = build_mount_args(
@@ -261,6 +265,14 @@ def inspect_container(name: str) -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout
+
+
+def get_container_image(name: str) -> str:
+    result = run_docker_command(
+        ["container", "inspect", "--format", "{{.Config.Image}}", name],
+        capture_output=True,
+    )
+    return result.stdout.strip()
 
 
 def run_docker_command(

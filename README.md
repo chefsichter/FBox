@@ -56,7 +56,7 @@ Windows PowerShell:
 
 ```text
 usage: fbox [PFAD|NAME] [-p PROFIL]
-       fbox ls | inspect ID | rm ID
+       fbox ls | inspect ID | rm ID | commit
        fbox profiles ls | default PID | new | edit PID | rm PID
 ```
 
@@ -87,7 +87,15 @@ fbox pf ls                 # Kurzform fuer profiles
 ```bash
 fbox ls                     # alle bekannten Container auflisten (mit ID)
 fbox rm 2                   # Container mit ID 2 loeschen
+fbox commit                 # aktuellen/verknuepften Container als neues Image sichern
 ```
+
+`fbox commit` nimmt standardmaessig den Container des aktuellen Verzeichnisses.
+Falls dort keiner bekannt ist, kannst du per PID aus der Liste oder per Containername
+einen anderen waehlen. Das Ziel-Image wird immer versioniert vorgeschlagen
+(`v0.0.1` oder bei bestehendem `vX.Y.Z` als `patch` / `minor` / `major`), und
+anschliessend kannst du optional ein Profil in `config.toml` auf das neue
+`default_image` umstellen oder ein neues Profil dafuer anlegen.
 
 ### Konfiguration
 

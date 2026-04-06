@@ -33,6 +33,7 @@ from fbox.cli.interactive_prompts import (
     prompt_extra_mounts,
     prompt_profile_name,
 )
+from fbox.cli.commit_command import cmd_commit
 from fbox.cli.status_views import (
     get_indexed_records,
     print_container_inspect,
@@ -104,7 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="fbox",
         usage=(
             "fbox [PFAD|NAME] [-p PROFIL]\n"
-            "       fbox ls | inspect ID | rm ID\n"
+            "       fbox ls | inspect ID | rm ID | commit\n"
             "       fbox profiles ls | default PID | new | edit PID | rm PID"
         ),
         description="Persistente Docker-Arbeitsboxen verwalten.",
@@ -114,6 +115,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  fbox ls                    Alle bekannten Container auflisten\n"
             "  fbox inspect ID            Details + exakte Create-Args anzeigen\n"
             "  fbox rm ID                 Container nach ID aus 'fbox ls' loeschen\n"
+            "  fbox commit                Container als versioniertes Image sichern\n"
             "  fbox profiles ls           Profile auflisten + Standard anzeigen\n"
             "  fbox profiles default PID  Standard-Profil setzen (none = keins)\n"
             "  fbox profiles new          Neues Profil interaktiv erstellen\n"
@@ -157,6 +159,7 @@ def _resolve_positionals(
     raw.ls = False
     raw.rm = None
     raw.inspect = None
+    raw.commit = False
     raw.profile_cmd = None
 
     if not words:
@@ -195,6 +198,8 @@ def _resolve_positionals(
             raw.rm = numeric_id
         else:
             raw.inspect = numeric_id
+    elif words == ["commit"]:
+        raw.commit = True
     elif len(words) == 1:
         raw.target = words[0]
     else:
@@ -223,6 +228,8 @@ def maybe_handle_config_flags(
         return remove_container_by_id(store, args.rm)
     if args.inspect is not None:
         return print_container_inspect(store, args.inspect)
+    if getattr(args, "commit", False):
+        return cmd_commit(store, get_config_path(), Path.cwd())
     if getattr(args, "profile_cmd", None) is not None:
         return _dispatch_profile_cmd(args.profile_cmd, config)
     return None

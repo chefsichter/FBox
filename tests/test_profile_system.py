@@ -393,6 +393,10 @@ class TestProfileSubcommandParsing:
         args = self._parse(["profile", "rm", "sandbox"])
         assert args.profile_cmd == ("rm", "sandbox")
 
+    def test_commit_command(self) -> None:
+        args = self._parse(["commit"])
+        assert args.commit is True
+
     def test_dash_p_sets_profile(self) -> None:
         args = self._parse(["/tmp/project", "-p", "llm"])
         assert args.profile == "llm"

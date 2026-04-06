@@ -16,6 +16,8 @@ def test_maybe_handle_config_flags_prints_path(capsys, monkeypatch) -> None:
         ls=False,
         debug=False,
         rm=None,
+        inspect=None,
+        commit=False,
         target=None,
     )
 
@@ -33,6 +35,8 @@ def test_maybe_handle_config_flags_opens_editor(monkeypatch) -> None:
         ls=False,
         debug=False,
         rm=None,
+        inspect=None,
+        commit=False,
         target=None,
     )
 
@@ -49,6 +53,8 @@ def test_maybe_handle_config_flags_lists_containers(monkeypatch) -> None:
         ls=True,
         debug=False,
         rm=None,
+        inspect=None,
+        commit=False,
         target=None,
     )
 
@@ -69,6 +75,8 @@ def test_maybe_handle_config_flags_prints_debug(monkeypatch) -> None:
         ls=False,
         debug=True,
         rm=None,
+        inspect=None,
+        commit=False,
         target="demo",
     )
 
@@ -85,6 +93,8 @@ def test_maybe_handle_config_flags_removes_container_by_id(monkeypatch) -> None:
         ls=False,
         debug=False,
         rm=2,
+        inspect=None,
+        commit=False,
         target=None,
     )
 
@@ -201,6 +211,24 @@ def test_reuse_by_project_path_uses_record_profile_config(monkeypatch) -> None:
 
     assert result == 23
     assert captured[0].default_shell == "/bin/zsh"
+
+
+def test_maybe_handle_config_flags_runs_commit(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "cmd_commit", lambda store, config_path, cwd: 29)
+    args = argparse.Namespace(
+        print_config_path=False,
+        config=False,
+        ls=False,
+        debug=False,
+        rm=None,
+        inspect=None,
+        commit=True,
+        target=None,
+    )
+
+    result = cli_main.maybe_handle_config_flags(args, AppConfig(), FakeStore())
+
+    assert result == 29
 
 
 def test_start_and_open_starts_before_opening(monkeypatch) -> None:
