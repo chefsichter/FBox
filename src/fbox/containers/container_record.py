@@ -15,7 +15,7 @@ Architecture:
     └─────────────────────────────────────────┘
 
 Usage:
-    from fbox.containers.models import ContainerRecord
+    from fbox.containers.container_record import ContainerRecord
 
     record = ContainerRecord(...)
 """

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import Any
 
 from fbox.config.settings import (
     CONFIG_FIELD_ORDER,
@@ -19,7 +20,8 @@ from fbox.config.settings import (
 # Read helpers
 # ---------------------------------------------------------------------------
 
-def _load_payload(config_path: Path) -> dict:
+
+def _load_payload(config_path: Path) -> dict[str, Any]:
     if not config_path.exists():
         return {}
     with config_path.open("rb") as fh:
@@ -44,6 +46,7 @@ def get_profile_overrides(config_path: Path, name: str) -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # Write helpers
 # ---------------------------------------------------------------------------
+
 
 def set_default_profile(config_path: Path, name: str) -> None:
     payload = _load_payload(config_path)
@@ -93,6 +96,7 @@ def delete_profile(config_path: Path, name: str) -> None:
 # TOML rendering (no external library)
 # ---------------------------------------------------------------------------
 
+
 def _render_value(value: object) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
@@ -111,7 +115,9 @@ def _render_value(value: object) -> str:
 _PREVIEW_FIELDS = CONFIG_FIELD_ORDER
 
 
-def format_full_profile_config(name: str, overrides: dict, merged: object) -> str:
+def format_full_profile_config(
+    name: str, overrides: dict[str, Any], merged: object
+) -> str:
     """Vollstaendige Konfiguration — mit Profil ueberschriebene Felder mit * markiert.
 
     merged ist eine AppConfig-Instanz (Basis + Profil zusammengefuehrt).
@@ -127,7 +133,7 @@ def format_full_profile_config(name: str, overrides: dict, merged: object) -> st
     return "\n".join(lines)
 
 
-def format_profile_overrides(name: str, overrides: dict) -> str:
+def format_profile_overrides(name: str, overrides: dict[str, Any]) -> str:
     """Gibt Profilinhalt als lesbaren String zurueck."""
     lines = [f"  [{name}]"]
     if not overrides:
@@ -152,7 +158,7 @@ def render_full_config(
     lines.append("")
 
     # default_profile key first
-    lines.append(f'{DEFAULT_PROFILE_KEY} = {_render_value(default_profile)}')
+    lines.append(f"{DEFAULT_PROFILE_KEY} = {_render_value(default_profile)}")
     lines.append("")
 
     # Base key-value pairs

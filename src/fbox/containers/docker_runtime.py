@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 from fbox.config.settings import DEFAULT_CONTAINER_PREFIX, AppConfig
-from fbox.containers.models import ContainerRecord
+from fbox.containers.container_record import ContainerRecord
 
 
 class DockerRuntimeError(RuntimeError):
@@ -106,8 +106,12 @@ def create_container(record: ContainerRecord, config: AppConfig) -> str:
     return result.stdout.strip()
 
 
-def commit_container(name: str, image: str) -> None:
-    run_docker_command(["commit", name, image], capture_output=True)
+def commit_container(name: str, image: str, description: str = "") -> None:
+    args = ["commit"]
+    if description:
+        args += ["-m", description]
+    args += [name, image]
+    run_docker_command(args, capture_output=True)
 
 
 def build_create_args(config: AppConfig, record: ContainerRecord) -> list[str]:
@@ -202,7 +206,7 @@ def build_user_args(config: AppConfig) -> list[str]:
     if sys.platform == "win32":
         raise DockerRuntimeError(
             "host-user Modus wird auf Windows nicht unterstuetzt. "
-            "Bitte root_mode = \"root\" in der Konfiguration setzen."
+            'Bitte root_mode = "root" in der Konfiguration setzen.'
         )
     return ["--user", f"{os.getuid()}:{os.getgid()}"]
 
@@ -212,6 +216,7 @@ def _resolve_group_id(name: str) -> str:
     if sys.platform == "win32":
         return name
     import grp
+
     try:
         return str(grp.getgrnam(name).gr_gid)
     except KeyError:

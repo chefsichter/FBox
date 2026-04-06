@@ -38,12 +38,12 @@ from fbox.config.settings import (
     get_state_file,
     iter_ordered_config_items,
 )
+from fbox.containers.container_record import ContainerRecord
 from fbox.containers.docker_runtime import (
     build_create_args,
     container_exists,
     container_is_running,
 )
-from fbox.containers.models import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
 

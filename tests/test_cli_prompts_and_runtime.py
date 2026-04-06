@@ -11,8 +11,8 @@ from fbox.cli.interactive_prompts import (
 )
 from fbox.config.settings import AppConfig
 from fbox.containers import docker_runtime
+from fbox.containers.container_record import ContainerRecord
 from fbox.containers.docker_runtime import DockerRuntimeError
-from fbox.containers.models import ContainerRecord
 
 
 def test_build_default_name_sanitizes_project_name(tmp_path: Path) -> None:

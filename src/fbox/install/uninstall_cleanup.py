@@ -15,7 +15,7 @@ Architecture:
     └─────────────────────────────────────────┘
 
 Usage:
-    from fbox.install.cleanup import uninstall_fbox
+    from fbox.install.uninstall_cleanup import uninstall_fbox
 
     uninstall_fbox(repo_root, Path("~/.local/bin/fbox.cmd").expanduser(), True)
 """

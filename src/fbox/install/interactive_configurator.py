@@ -26,7 +26,6 @@ Usage:
 
 from __future__ import annotations
 
-import sys
 import tomllib
 from pathlib import Path
 
@@ -34,7 +33,12 @@ from fbox.config.profile_store import (
     format_full_profile_config,
     render_full_config,
 )
-from fbox.config.settings import EXAMPLE_CONFIG_PATH, AppConfig, _apply_overrides
+from fbox.config.settings import (
+    DEFAULT_WRAPPER_PATH,
+    EXAMPLE_CONFIG_PATH,
+    AppConfig,
+    apply_overrides,
+)
 
 
 def _collect_config_values(
@@ -45,11 +49,11 @@ def _collect_config_values(
     gpu_vendor: str,
     workspace_readonly: bool,
     extra_mounts_readonly: bool,
-    extra_mounts: list,
+    extra_mounts: list[str],
     tmpfs: str,
     memory_limit: str,
     pids_limit: int,
-    extra_flags: list,
+    extra_flags: list[str],
     editor_command: str,
     install_wrapper_path: str,
 ) -> dict[str, object]:
@@ -69,11 +73,6 @@ def _collect_config_values(
         "editor_command": editor_command,
         "install_wrapper_path": install_wrapper_path,
     }
-
-
-_DEFAULT_WRAPPER_PATH = (
-    "~/.local/bin/fbox.cmd" if sys.platform == "win32" else "~/.local/bin/fbox"
-)
 
 
 def ask(prompt: str, default: str) -> str:
@@ -100,7 +99,7 @@ def ask_bool(prompt: str, default: bool) -> bool:
         print("Bitte y oder n eingeben.")
 
 
-def ask_flags(prompt: str, default: list) -> list:
+def ask_flags(prompt: str, default: list[str]) -> list[str]:
     default_str = " ".join(default)
     try:
         answer = input(f"{prompt} [{default_str or 'keine'}]: ").strip()
@@ -143,7 +142,7 @@ def _values_from_config(d: AppConfig) -> dict[str, object]:
         pids_limit=d.pids_limit,
         extra_flags=d.extra_flags,
         editor_command="code --wait",
-        install_wrapper_path=_DEFAULT_WRAPPER_PATH,
+        install_wrapper_path=DEFAULT_WRAPPER_PATH,
     )
 
 
@@ -176,7 +175,8 @@ def _ask_config_questions(base: AppConfig) -> dict[str, object]:
             base.extra_mounts_readonly,
         ),
         extra_mounts=ask_flags(
-            "Standard-Mounts (quelle:ziel, z.B. ~/.cache/huggingface:/root/.cache/huggingface)",
+            "Standard-Mounts (quelle:ziel,"
+            " z.B. ~/.cache/huggingface:/root/.cache/huggingface)",
             base.extra_mounts,
         ),
         tmpfs=ask(
@@ -208,13 +208,13 @@ def build_config_interactively(default_target: Path) -> tuple[str, str]:
     else:
         values = _ask_config_questions(d)
         values["editor_command"] = ask("Editor fuer `fbox --config`", "code --wait")
-        values["install_wrapper_path"] = _DEFAULT_WRAPPER_PATH
+        values["install_wrapper_path"] = DEFAULT_WRAPPER_PATH
 
     rendered = render_full_config(values, example_profiles, chosen_profile)
-    return rendered, _DEFAULT_WRAPPER_PATH
+    return rendered, DEFAULT_WRAPPER_PATH
 
 
-def _load_example_profiles() -> dict[str, dict]:
+def _load_example_profiles() -> dict[str, dict[str, object]]:
     if not EXAMPLE_CONFIG_PATH.exists():
         return {}
     with EXAMPLE_CONFIG_PATH.open("rb") as fh:
@@ -222,8 +222,42 @@ def _load_example_profiles() -> dict[str, dict]:
     return dict(payload.get("profiles", {}))
 
 
+def _show_profile_list(names: list[str]) -> None:
+    print("\nVerfuegbare Profile:")
+    print("  [0] default")
+    for i, name in enumerate(names, 1):
+        print(f"  [{i}] {name}")
+
+
+def _preview_profile(
+    names: list[str],
+    profiles: dict[str, dict[str, object]],
+    pid: int,
+) -> tuple[str, AppConfig, bool] | None:
+    """Show profile details and return selection or None to continue the loop."""
+    base = AppConfig()
+    if pid == 0:
+        print(format_full_profile_config("default", {}, base))
+        action = ask_choice("Aktion (u=uebernehmen / z=zurueck)", "u", ["u", "z"])
+        return ("", base, True) if action == "u" else None
+    if not (1 <= pid <= len(names)):
+        print(f"  Unbekannte PID: {pid}")
+        return None
+    name = names[pid - 1]
+    merged = apply_overrides(base, profiles[name])
+    print(format_full_profile_config(name, profiles[name], merged))
+    action = ask_choice(
+        "Aktion (u=uebernehmen / b=bearbeiten / z=zurueck)", "u", ["u", "b", "z"]
+    )
+    if action == "u":
+        return name, base, True
+    if action == "b":
+        return name, merged, False
+    return None
+
+
 def _ask_base_profile(
-    profiles: dict[str, dict],
+    profiles: dict[str, dict[str, object]],
 ) -> tuple[str, AppConfig, bool]:
     """Nummerierte Auswahl mit Preview und Direkt-Übernahme.
 
@@ -235,60 +269,24 @@ def _ask_base_profile(
         return "", AppConfig(), False
 
     names = list(profiles.keys())
-
-    def _show_list() -> None:
-        print("\nVerfuegbare Profile:")
-        print("  [0] default")
-        for i, name in enumerate(names, 1):
-            print(f"  [{i}] {name}")
-
-    _show_list()
+    _show_profile_list(names)
 
     while True:
         try:
-            raw = input(
-                "\nProfil anzeigen (PID) oder Enter fuer Auswahl: "
-            ).strip()
+            raw = input("\nProfil anzeigen (PID) oder Enter fuer Auswahl: ").strip()
         except EOFError:
             break
-
         if not raw:
-            break  # → direkt zur Kurzauswahl
-
+            break
         try:
             pid = int(raw)
         except ValueError:
             print("  Bitte eine Zahl eingeben.")
             continue
-
-        base = AppConfig()
-        if pid == 0:
-            print(format_full_profile_config("default", {}, base))
-            action = ask_choice("Aktion (u=uebernehmen / z=zurueck)", "u", ["u", "z"])
-            if action == "u":
-                return "", base, True
-            _show_list()
-            continue
-
-        if not (1 <= pid <= len(names)):
-            print(f"  Unbekannte PID: {pid}")
-            continue
-
-        name = names[pid - 1]
-        merged = _apply_overrides(base, profiles[name])
-        print(format_full_profile_config(name, profiles[name], merged))
-        action = ask_choice(
-            "Aktion (u=uebernehmen / b=bearbeiten / z=zurueck)",
-            "u",
-            ["u", "b", "z"],
-        )
-        if action == "u":
-            # Basis bleibt AppConfig-Defaults, Profil wirkt als Runtime-Override
-            return name, base, True
-        if action == "b":
-            # Fragebogen mit Profil-Werten als Defaults
-            return name, merged, False
-        _show_list()
+        result = _preview_profile(names, profiles, pid)
+        if result is not None:
+            return result
+        _show_profile_list(names)
 
     # Enter ohne Preview → Kurzauswahl
     pids = ["0"] + [str(i) for i in range(1, len(names) + 1)]
@@ -297,7 +295,7 @@ def _ask_base_profile(
     if pid == 0:
         return "", AppConfig(), False
     name = names[pid - 1]
-    merged = _apply_overrides(AppConfig(), profiles[name])
+    merged = apply_overrides(AppConfig(), profiles[name])
     return name, merged, False
 
 
@@ -330,26 +328,6 @@ def choose_install_action(has_existing_installation: bool) -> str:
         if answer in shortcuts:
             return shortcuts[answer]
         print("Bitte install/reinstall/uninstall/abort oder i/r/u/a eingeben.")
-
-
-def render_config_toml(values: dict[str, str | bool | int]) -> str:
-    lines = [
-        "# fbox runtime defaults",
-        "# Diese Datei kannst du spaeter mit `fbox --config` bearbeiten.",
-        "",
-    ]
-    for key, value in values.items():
-        if value is True:
-            rendered_value = "true"
-        elif value is False:
-            rendered_value = "false"
-        elif isinstance(value, int):
-            rendered_value = str(value)
-        else:
-            rendered_value = f'"{value}"'
-        lines.append(f"{key} = {rendered_value}")
-    lines.append("")
-    return "\n".join(lines)
 
 
 def build_profile_interactively(

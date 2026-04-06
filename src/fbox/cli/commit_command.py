@@ -1,18 +1,38 @@
 """
 Commit Command - Interactively snapshot a container into a versioned image
 
+Architecture:
+    ┌─────────────────────────────────────────┐
+    │  commit_command.py                      │
+    │  ┌───────────────────────────────────┐  │
+    │  │  Container selection             │  │
+    │  │  → auto-detect from cwd or ls   │  │
+    │  └──────────────┬────────────────────┘  │
+    │  ┌──────────────▼────────────────────┐  │
+    │  │  Semver tag proposal             │  │
+    │  │  → patch / minor / major / new  │  │
+    │  └──────────────┬────────────────────┘  │
+    │  ┌──────────────▼────────────────────┐  │
+    │  │  docker commit with spinner      │  │
+    │  │  → commit_container()            │  │
+    │  └──────────────┬────────────────────┘  │
+    │  ┌──────────────▼────────────────────┐  │
+    │  │  Profile update                  │  │
+    │  │  → upsert_profile() in config    │  │
+    │  └───────────────────────────────────┘  │
+    └─────────────────────────────────────────┘
+
 Usage:
     from fbox.cli.commit_command import cmd_commit
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import itertools
-import subprocess
 import sys
 import threading
+from dataclasses import dataclass
+from pathlib import Path
 
 from fbox.cli.interactive_prompts import prompt_text
 from fbox.cli.status_views import get_indexed_records
@@ -22,13 +42,13 @@ from fbox.config.profile_store import (
     upsert_profile,
 )
 from fbox.config.settings import load_config
+from fbox.containers.container_record import ContainerRecord
 from fbox.containers.docker_runtime import (
-    DockerRuntimeError,
+    commit_container,
     container_exists,
     get_container_image,
     require_docker,
 )
-from fbox.containers.models import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
 
@@ -46,8 +66,7 @@ def cmd_commit(store: ContainerStateStore, config_path: Path, cwd: Path) -> int:
     description = prompt_commit_description(source, target_image)
     commit_container_with_spinner(source.container_name, target_image, description)
     print(
-        f"Image erstellt: {target_image}"
-        f"  (aus Container {source.container_name})"
+        f"Image erstellt: {target_image}" f"  (aus Container {source.container_name})"
     )
     profile_name = prompt_profile_target(
         config_path,
@@ -73,7 +92,6 @@ def prompt_commit_source(store: ContainerStateStore, cwd: Path) -> CommitSource:
     )
     if current is None:
         print_commit_sources(indexed, current)
-    default_label = current.name if current is not None else None
     while True:
         answer = prompt_text(container_prompt_label(current))
         if answer == "ls":
@@ -95,7 +113,11 @@ def print_commit_sources(
     if not indexed:
         print("  <none>")
     for record_id, record in indexed:
-        marker = " (aktuelles Verzeichnis)" if current and record.name == current.name else ""
+        marker = (
+            " (aktuelles Verzeichnis)"
+            if current and record.name == current.name
+            else ""
+        )
         print(
             f"  [{record_id}] {record.name}"
             f"  image={record.image}"
@@ -107,8 +129,7 @@ def print_commit_sources(
 def container_prompt_label(current: ContainerRecord | None) -> str:
     if current:
         return (
-            "Container fuer Commit "
-            f"[{current.name} (image={current.image}) | ls]: "
+            "Container fuer Commit " f"[{current.name} (image={current.image}) | ls]: "
         )
     return "Container fuer Commit [ls]: "
 
@@ -276,9 +297,7 @@ def resolve_profile_name(names: list[str], answer: str) -> str | None:
 
 
 def prompt_commit_description(source: CommitSource, target_image: str) -> str:
-    default_description = (
-        f"{source.container_name}: {source.image} -> {target_image}"
-    )
+    default_description = f"{source.container_name}: {source.image} -> {target_image}"
     answer = prompt_text(f"Beschreibung: [{default_description}] ")
     if not answer:
         return default_description
@@ -311,15 +330,7 @@ def commit_container_with_spinner(
     )
     spinner_thread.start()
     try:
-        subprocess.run(
-            ["docker", "commit", "-m", description, container_name, target_image],
-            check=True,
-            text=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError as error:
-        message_detail = error.stderr.strip() or "docker commit failed"
-        raise DockerRuntimeError(message_detail) from error
+        commit_container(container_name, target_image, description)
     finally:
         stop_event.set()
         spinner_thread.join()

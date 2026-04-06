@@ -5,7 +5,7 @@ import pytest
 
 from fbox.cli import main as cli_main
 from fbox.config.settings import AppConfig
-from fbox.containers.models import ContainerRecord
+from fbox.containers.container_record import ContainerRecord
 
 
 def test_maybe_handle_config_flags_prints_path(capsys, monkeypatch) -> None:

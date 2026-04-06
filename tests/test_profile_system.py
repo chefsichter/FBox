@@ -16,8 +16,8 @@ from fbox.config.profile_store import (
 )
 from fbox.config.settings import (
     AppConfig,
-    _apply_overrides,
     _config_from_dict,
+    apply_overrides,
     load_config,
 )
 from fbox.containers.docker_runtime import build_resource_args
@@ -25,6 +25,7 @@ from fbox.containers.docker_runtime import build_resource_args
 # ---------------------------------------------------------------------------
 # settings.py tests
 # ---------------------------------------------------------------------------
+
 
 class TestConfigFromDict:
     def test_uses_defaults_for_missing_keys(self) -> None:
@@ -39,20 +40,22 @@ class TestConfigFromDict:
         assert config.pids_limit == 256
 
     def test_reads_all_base_fields(self) -> None:
-        config = _config_from_dict({
-            "default_image": "alpine:3",
-            "default_shell": "/bin/sh",
-            "default_network": "none",
-            "gpu_vendor": "nvidia",
-            "root_mode": "host-user",
-            "extra_mounts_readonly": False,
-            "workspace_readonly": True,
-            "tmpfs": "/tmp:rw,noexec,nosuid,size=512m",
-            "memory_limit": "4g",
-            "pids_limit": 100,
-            "editor_command": "vim",
-            "install_wrapper_path": "/usr/local/bin/fbox",
-        })
+        config = _config_from_dict(
+            {
+                "default_image": "alpine:3",
+                "default_shell": "/bin/sh",
+                "default_network": "none",
+                "gpu_vendor": "nvidia",
+                "root_mode": "host-user",
+                "extra_mounts_readonly": False,
+                "workspace_readonly": True,
+                "tmpfs": "/tmp:rw,noexec,nosuid,size=512m",
+                "memory_limit": "4g",
+                "pids_limit": 100,
+                "editor_command": "vim",
+                "install_wrapper_path": "/usr/local/bin/fbox",
+            }
+        )
         assert config.default_image == "alpine:3"
         assert config.gpu_vendor == "nvidia"
         assert config.workspace_readonly is True
@@ -63,7 +66,7 @@ class TestConfigFromDict:
 class TestApplyOverrides:
     def test_overrides_specific_fields(self) -> None:
         base = AppConfig(default_network="bridge", memory_limit="")
-        result = _apply_overrides(
+        result = apply_overrides(
             base, {"default_network": "none", "memory_limit": "4g"}
         )
         assert result.default_network == "none"
@@ -71,14 +74,14 @@ class TestApplyOverrides:
 
     def test_non_overridden_fields_stay_same(self) -> None:
         base = AppConfig(default_image="alpine:3", gpu_vendor="amd")
-        result = _apply_overrides(base, {"default_network": "none"})
+        result = apply_overrides(base, {"default_network": "none"})
         assert result.default_image == "alpine:3"
         assert result.gpu_vendor == "amd"
 
     def test_ignores_unknown_keys(self) -> None:
         base = AppConfig()
         # Unknown keys should not raise errors
-        result = _apply_overrides(base, {"nonexistent_key": "value"})
+        result = apply_overrides(base, {"nonexistent_key": "value"})
         assert result.default_image == base.default_image
 
 
@@ -89,17 +92,22 @@ class TestLoadConfigWithProfile:
         return cfg
 
     def test_loads_base_config_without_profile(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_image = "ubuntu:24.04"
 default_network = "bridge"
 memory_limit = "2g"
-""")
+""",
+        )
         config = load_config(cfg)
         assert config.default_network == "bridge"
         assert config.memory_limit == "2g"
 
     def test_loads_named_profile(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_network = "bridge"
 memory_limit = "2g"
 
@@ -107,20 +115,24 @@ memory_limit = "2g"
 default_network = "none"
 memory_limit = "4g"
 pids_limit = 512
-""")
+""",
+        )
         config = load_config(cfg, profile="sandbox")
         assert config.default_network == "none"
         assert config.memory_limit == "4g"
         assert config.pids_limit == 512
 
     def test_profile_inherits_base_fields(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_image = "myimage:latest"
 default_network = "bridge"
 
 [profiles.minimal]
 default_network = "none"
-""")
+""",
+        )
         config = load_config(cfg, profile="minimal")
         # Overridden
         assert config.default_network == "none"
@@ -128,39 +140,51 @@ default_network = "none"
         assert config.default_image == "myimage:latest"
 
     def test_uses_default_profile_from_config(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_profile = "sandbox"
 default_network = "bridge"
 
 [profiles.sandbox]
 default_network = "none"
-""")
+""",
+        )
         config = load_config(cfg)
         assert config.default_network == "none"
 
     def test_profile_none_skips_default(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_profile = "sandbox"
 default_network = "bridge"
 
 [profiles.sandbox]
 default_network = "none"
-""")
+""",
+        )
         config = load_config(cfg, profile="none")
         assert config.default_network == "bridge"
 
     def test_missing_profile_falls_back_to_base(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_network = "host"
-""")
+""",
+        )
         config = load_config(cfg, profile="nonexistent")
         assert config.default_network == "host"
 
     def test_new_fields_memory_and_pids(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 memory_limit = "8g"
 pids_limit = 1000
-""")
+""",
+        )
         config = load_config(cfg)
         assert config.memory_limit == "8g"
         assert config.pids_limit == 1000
@@ -169,6 +193,7 @@ pids_limit = 1000
 # ---------------------------------------------------------------------------
 # profile_store.py tests
 # ---------------------------------------------------------------------------
+
 
 class TestProfileStore:
     def _write_config(self, tmp_path: Path, content: str) -> Path:
@@ -181,13 +206,16 @@ class TestProfileStore:
         assert get_profile_names(cfg) == []
 
     def test_get_profile_names_with_profiles(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 [profiles.sandbox]
 default_network = "none"
 
 [profiles.llm]
 gpu_vendor = "amd"
-""")
+""",
+        )
         names = get_profile_names(cfg)
         assert "sandbox" in names
         assert "llm" in names
@@ -201,11 +229,14 @@ gpu_vendor = "amd"
         assert get_default_profile_name(cfg) == "sandbox"
 
     def test_get_profile_overrides(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 [profiles.sandbox]
 default_network = "none"
 memory_limit = "4g"
-""")
+""",
+        )
         overrides = get_profile_overrides(cfg, "sandbox")
         assert overrides["default_network"] == "none"
         assert overrides["memory_limit"] == "4g"
@@ -223,10 +254,13 @@ memory_limit = "4g"
         assert overrides["default_network"] == "none"
 
     def test_upsert_profile_updates_existing(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 [profiles.myprofile]
 default_network = "bridge"
-""")
+""",
+        )
         upsert_profile(
             cfg, "myprofile", {"default_network": "none", "memory_limit": "8g"}
         )
@@ -235,28 +269,37 @@ default_network = "bridge"
         assert overrides["memory_limit"] == "8g"
 
     def test_delete_profile_removes_it(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 [profiles.sandbox]
 default_network = "none"
-""")
+""",
+        )
         delete_profile(cfg, "sandbox")
         assert "sandbox" not in get_profile_names(cfg)
 
     def test_delete_profile_clears_default_if_matches(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 default_profile = "sandbox"
 
 [profiles.sandbox]
 default_network = "none"
-""")
+""",
+        )
         delete_profile(cfg, "sandbox")
         assert get_default_profile_name(cfg) == ""
 
     def test_set_default_profile(self, tmp_path: Path) -> None:
-        cfg = self._write_config(tmp_path, """
+        cfg = self._write_config(
+            tmp_path,
+            """
 [profiles.sandbox]
 default_network = "none"
-""")
+""",
+        )
         set_default_profile(cfg, "sandbox")
         assert get_default_profile_name(cfg) == "sandbox"
 
@@ -294,6 +337,7 @@ class TestRenderFullConfig:
 
     def test_round_trips_through_tomllib(self, tmp_path: Path) -> None:
         import tomllib
+
         content = render_full_config(
             {"default_image": "alpine:3", "pids_limit": 100},
             {"sandbox": {"default_network": "none"}},
@@ -312,6 +356,7 @@ class TestRenderFullConfig:
 # ---------------------------------------------------------------------------
 # docker_runtime.py tests
 # ---------------------------------------------------------------------------
+
 
 class TestBuildResourceArgs:
     def test_empty_when_no_limits(self) -> None:
@@ -343,11 +388,13 @@ class TestBuildResourceArgs:
 # CLI parsing tests for profile subcommands
 # ---------------------------------------------------------------------------
 
+
 class TestProfileSubcommandParsing:
     def _parse(self, argv: list[str]) -> argparse.Namespace:
         import sys
 
         from fbox.cli.main import _build_parser, _resolve_positionals
+
         old = sys.argv
         sys.argv = ["fbox"] + argv
         try:

@@ -20,7 +20,7 @@ from fbox.config.profile_store import (
     set_default_profile,
     upsert_profile,
 )
-from fbox.config.settings import AppConfig, _apply_overrides, load_config
+from fbox.config.settings import AppConfig, apply_overrides, load_config
 from fbox.install.interactive_configurator import build_profile_interactively
 
 
@@ -55,9 +55,7 @@ def cmd_profile_ls(config_path: Path) -> int:
 
     while True:
         try:
-            raw = prompt_text(
-                "\nProfil-Details anzeigen (PID, Enter zum Beenden): "
-            )
+            raw = prompt_text("\nProfil-Details anzeigen (PID, Enter zum Beenden): ")
         except EOFError:
             break
         except KeyboardInterrupt:
@@ -72,7 +70,7 @@ def cmd_profile_ls(config_path: Path) -> int:
             print(f"  Unbekannte PID: {raw}")
             continue
         overrides = get_profile_overrides(config_path, resolved_name)
-        merged = _apply_overrides(base, overrides)
+        merged = apply_overrides(base, overrides)
         print(format_full_profile_config(resolved_name, overrides, merged))
     return 0
 
@@ -128,9 +126,8 @@ def cmd_profile_edit(
     if name is None:
         print(f"fbox: Profil '{pid_or_name}' nicht gefunden.", file=sys.stderr)
         return 1
-    from fbox.config.settings import _apply_overrides
     current_overrides = get_profile_overrides(config_path, name)
-    effective_base = _apply_overrides(base_config, current_overrides)
+    effective_base = apply_overrides(base_config, current_overrides)
     overrides = build_profile_interactively(
         name,
         effective_base,

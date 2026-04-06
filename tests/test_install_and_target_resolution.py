@@ -4,8 +4,10 @@ import pytest
 from conftest import DummyCompletedProcess
 
 from fbox.containers.target_resolution import resolve_target, validate_mounts
-from fbox.install.cleanup import uninstall_fbox
 from fbox.install.installer_main import main as installer_main
+from fbox.install.uninstall_cleanup import uninstall_fbox
+from fbox.install.uninstall_main import load_existing_config
+from fbox.install.uninstall_main import main as uninstall_main
 from fbox.install.venv_setup import (
     create_virtualenv,
     install_local_venv,
@@ -19,6 +21,54 @@ def test_resolve_target_returns_path_for_existing_directory(tmp_path: Path) -> N
 
     assert project_path == tmp_path
     assert name is None
+
+
+def test_resolve_target_returns_none_path_for_nonexistent(tmp_path: Path) -> None:
+    project_path, name = resolve_target("nonexistent-container")
+
+    assert project_path is None
+    assert name == "nonexistent-container"
+
+
+def test_resolve_target_none_returns_current_dir() -> None:
+    project_path, name = resolve_target(None)
+
+    assert project_path == Path(".")
+    assert name is None
+
+
+def test_validate_mounts_rejects_non_existent_project(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="existiert nicht"):
+        validate_mounts(tmp_path / "missing_project", [])
+
+
+def test_validate_mounts_rejects_project_file(tmp_path: Path) -> None:
+    f = tmp_path / "file.txt"
+    f.write_text("x", encoding="utf-8")
+    with pytest.raises(ValueError, match="kein Verzeichnis"):
+        validate_mounts(f, [])
+
+
+def test_validate_mounts_with_destination_and_mode(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    extra = tmp_path / "data"
+    project.mkdir()
+    extra.mkdir()
+
+    mounts = validate_mounts(project, [f"{extra}:/data:ro"])
+
+    assert len(mounts) == 1
+    assert "/data:ro" in mounts[0]
+
+
+def test_validate_mounts_rejects_invalid_mode(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    extra = tmp_path / "data"
+    project.mkdir()
+    extra.mkdir()
+
+    with pytest.raises(ValueError, match="Ungueltiger Mount-Modus"):
+        validate_mounts(project, [f"{extra}:/data:bad"])
 
 
 def test_validate_mounts_rejects_missing_or_file_mounts(tmp_path: Path) -> None:
@@ -178,7 +228,7 @@ def test_uninstall_fbox_removes_artifacts(monkeypatch, tmp_path: Path) -> None:
     state_path.write_text("", encoding="utf-8")
     remove_calls: list[bool] = []
     monkeypatch.setattr(
-        "fbox.install.cleanup.remove_managed_containers",
+        "fbox.install.uninstall_cleanup.remove_managed_containers",
         lambda: remove_calls.append(True),
     )
 
@@ -189,3 +239,41 @@ def test_uninstall_fbox_removes_artifacts(monkeypatch, tmp_path: Path) -> None:
     assert not config_path.exists()
     assert not state_path.exists()
     assert not (repo_root / ".venv").exists()
+
+
+# ---------------------------------------------------------------------------
+# uninstall_main.py
+# ---------------------------------------------------------------------------
+
+
+def test_load_existing_config_uses_existing_file(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    config_path = tmp_path / "fbox" / "config.toml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text('default_image = "ubuntu:24.04"\n', encoding="utf-8")
+
+    config = load_existing_config()
+
+    assert config.default_image == "ubuntu:24.04"
+
+
+def test_uninstall_main_calls_uninstall_fbox(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    config_path = tmp_path / "fbox" / "config.toml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text('default_image = "ubuntu:24.04"\n', encoding="utf-8")
+    uninstall_calls: list[bool] = []
+    monkeypatch.setattr(
+        "fbox.install.uninstall_main.ask_bool",
+        lambda prompt, default: True,
+    )
+    monkeypatch.setattr(
+        "fbox.install.uninstall_main.uninstall_fbox",
+        lambda repo_root, wrapper_path, remove_containers: uninstall_calls.append(
+            remove_containers
+        ),
+    )
+
+    uninstall_main()
+
+    assert uninstall_calls == [True]

@@ -26,7 +26,7 @@ import json
 from pathlib import Path
 
 from fbox.config.settings import get_state_file
-from fbox.containers.models import ContainerRecord
+from fbox.containers.container_record import ContainerRecord
 
 
 class ContainerStateStore:

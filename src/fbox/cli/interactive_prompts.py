@@ -27,6 +27,7 @@ from pathlib import Path
 from fbox.config.settings import DEFAULT_CONTAINER_PREFIX
 from fbox.containers.docker_runtime import sanitize_container_name
 
+
 def build_default_name(project_path: Path) -> str:
     base_name = project_path.resolve().name or DEFAULT_CONTAINER_PREFIX
     return sanitize_container_name(f"{DEFAULT_CONTAINER_PREFIX}-{base_name}")
@@ -69,9 +70,7 @@ def prompt_profile_name(
 
     default_label = profile_names[default_index - 1] if default_index else "ohne Profil"
     while True:
-        answer = prompt_text(
-            f"Profil fuer neue Box [{default_label}]: "
-        )
+        answer = prompt_text(f"Profil fuer neue Box [{default_label}]: ")
         if not answer:
             return default_profile if default_index else ""
         if answer in {"0", "none"}:

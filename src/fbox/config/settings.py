@@ -31,6 +31,7 @@ import sys
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
+from typing import Any
 
 APP_DIR_NAME = "fbox"
 CONFIG_FILE_NAME = "config.toml"
@@ -46,6 +47,8 @@ DEFAULT_WRAPPER_PATH = (
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[3] / "config" / "fbox.example.toml"
 )
+
+
 @dataclass(slots=True)
 class AppConfig:
     default_image: str = DEFAULT_IMAGE
@@ -55,11 +58,11 @@ class AppConfig:
     gpu_vendor: str = "none"
     workspace_readonly: bool = False
     extra_mounts_readonly: bool = True
-    extra_mounts: list = field(default_factory=list)
+    extra_mounts: list[str] = field(default_factory=list)
     tmpfs: str = "/tmp:rw,exec,nosuid"
     memory_limit: str = ""
     pids_limit: int = 0
-    extra_flags: list = field(default_factory=list)
+    extra_flags: list[str] = field(default_factory=list)
     editor_command: str = ""
     install_wrapper_path: str = field(default_factory=lambda: DEFAULT_WRAPPER_PATH)
 
@@ -87,7 +90,7 @@ def get_xdg_state_home() -> Path:
     return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
 
 
-def _config_from_dict(payload: dict) -> AppConfig:
+def _config_from_dict(payload: dict[str, Any]) -> AppConfig:
     """Build an AppConfig from a flat dict, using dataclass defaults for missing."""
     defaults = AppConfig()
     return AppConfig(
@@ -114,13 +117,11 @@ def _config_from_dict(payload: dict) -> AppConfig:
     )
 
 
-def _apply_overrides(base: AppConfig, overrides: dict) -> AppConfig:
+def apply_overrides(base: AppConfig, overrides: dict[str, Any]) -> AppConfig:
     """Return a new AppConfig with fields from overrides applied on top of base."""
-    # Collect current values from base
-    base_dict: dict = {}
+    base_dict: dict[str, Any] = {}
     for f in fields(base):
         base_dict[f.name] = getattr(base, f.name)
-    # Apply overrides
     for key, value in overrides.items():
         if key in base_dict:
             base_dict[key] = value
@@ -157,7 +158,7 @@ def load_config(
         return base
 
     overrides = profiles[profile]
-    return _apply_overrides(base, overrides)
+    return apply_overrides(base, overrides)
 
 
 def resolve_editor_command(config: AppConfig) -> str:

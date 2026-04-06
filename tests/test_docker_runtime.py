@@ -1,12 +1,12 @@
 from pathlib import Path
 
 from fbox.config.settings import AppConfig
+from fbox.containers.container_record import ContainerRecord
 from fbox.containers.docker_runtime import (
     build_create_args,
     build_mount_spec,
     build_tmpfs_args,
 )
-from fbox.containers.models import ContainerRecord
 
 
 def test_build_mount_spec_respects_readonly_flag() -> None:

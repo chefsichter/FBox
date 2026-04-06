@@ -27,13 +27,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from fbox.config.files import ensure_config_exists
+from fbox.config.config_bootstrap import ensure_config_exists
 from fbox.config.settings import get_config_file, load_config
-from fbox.install.cleanup import uninstall_fbox
 from fbox.install.interactive_configurator import (
     build_config_interactively,
     choose_install_action,
 )
+from fbox.install.uninstall_cleanup import uninstall_fbox
 from fbox.install.venv_setup import install_local_venv, installation_exists
 
 

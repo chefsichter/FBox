@@ -3,10 +3,10 @@ from pathlib import Path
 
 from conftest import DummyCompletedProcess
 
-from fbox.config.editing import edit_config, get_config_path
-from fbox.config.files import ensure_config_exists
+from fbox.config.config_bootstrap import ensure_config_exists
+from fbox.config.config_editor import edit_config, get_config_path
 from fbox.config.settings import AppConfig, get_config_file, get_state_file
-from fbox.containers.models import ContainerRecord
+from fbox.containers.container_record import ContainerRecord
 from fbox.state.container_state_store import ContainerStateStore
 
 
@@ -40,7 +40,9 @@ def test_edit_config_uses_configured_editor(monkeypatch, tmp_path: Path) -> None
     commands: list[list[str]] = []
     config_path = tmp_path / "config.toml"
     config_path.write_text("", encoding="utf-8")
-    monkeypatch.setattr("fbox.config.editing.get_config_path", lambda: config_path)
+    monkeypatch.setattr(
+        "fbox.config.config_editor.get_config_path", lambda: config_path
+    )
     monkeypatch.setattr(
         "subprocess.run",
         lambda args, check, text: commands.append(args) or DummyCompletedProcess(0),

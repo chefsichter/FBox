@@ -4,7 +4,7 @@ from fbox.cli.status_views import (
     print_debug_report,
 )
 from fbox.config.settings import AppConfig
-from fbox.containers.models import ContainerRecord
+from fbox.containers.container_record import ContainerRecord
 
 
 def test_print_container_list_renders_known_records(capsys, monkeypatch) -> None:
@@ -63,6 +63,56 @@ def test_get_indexed_records_returns_stable_sorted_ids() -> None:
         (1, "fbox-a"),
         (2, "fbox-c"),
     ]
+
+
+def test_print_container_inspect_shows_details(capsys, monkeypatch) -> None:
+    record = ContainerRecord(
+        "fbox-a",
+        "/tmp/a",
+        "ubuntu",
+        "abc123",
+        [],
+        create_args=["docker", "create", "--name", "fbox-a", "ubuntu"],
+    )
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr("fbox.cli.status_views.container_exists", lambda name: True)
+    monkeypatch.setattr("fbox.cli.status_views.container_is_running", lambda name: True)
+
+    from fbox.cli.status_views import print_container_inspect
+
+    store = FakeStore([record])
+    result = print_container_inspect(store, 1)
+
+    output = capsys.readouterr().out
+    assert result == 0
+    assert "fbox-a" in output
+    assert "running" in output
+    assert "abc123" in output
+    assert "docker create (used)" in output
+
+
+def test_print_container_inspect_unknown_id(capsys, monkeypatch) -> None:
+    from fbox.cli.status_views import print_container_inspect
+
+    store = FakeStore([])
+    result = print_container_inspect(store, 99)
+
+    assert result == 1
+
+
+def test_print_container_inspect_no_create_args(capsys, monkeypatch) -> None:
+    record = ContainerRecord("fbox-a", "/tmp/a", "ubuntu", None, [])
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr("fbox.cli.status_views.container_exists", lambda name: False)
+
+    from fbox.cli.status_views import print_container_inspect
+
+    store = FakeStore([record])
+    result = print_container_inspect(store, 1)
+
+    output = capsys.readouterr().out
+    assert result == 0
+    assert "not recorded" in output
 
 
 class FakeStore:

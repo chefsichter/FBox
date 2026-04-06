@@ -15,7 +15,7 @@ Architecture:
     └─────────────────────────────────────────┘
 
 Usage:
-    from fbox.config.files import ensure_config_exists
+    from fbox.config.config_bootstrap import ensure_config_exists
 
     ensure_config_exists()
 """

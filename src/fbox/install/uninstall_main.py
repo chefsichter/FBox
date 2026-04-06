@@ -27,10 +27,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from fbox.config.files import ensure_config_exists
+from fbox.config.config_bootstrap import ensure_config_exists
 from fbox.config.settings import AppConfig, get_config_file, load_config
-from fbox.install.cleanup import uninstall_fbox
 from fbox.install.interactive_configurator import ask_bool
+from fbox.install.uninstall_cleanup import uninstall_fbox
 
 
 def main() -> None:

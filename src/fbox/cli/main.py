@@ -28,12 +28,12 @@ import argparse
 import sys
 from pathlib import Path
 
+from fbox.cli.commit_command import cmd_commit
 from fbox.cli.interactive_prompts import (
     prompt_container_name,
     prompt_extra_mounts,
     prompt_profile_name,
 )
-from fbox.cli.commit_command import cmd_commit
 from fbox.cli.status_views import (
     get_indexed_records,
     print_container_inspect,
@@ -41,10 +41,11 @@ from fbox.cli.status_views import (
     print_create_args,
     print_debug_report,
 )
-from fbox.config.editing import edit_config, get_config_path
-from fbox.config.files import ensure_config_exists
+from fbox.config.config_bootstrap import ensure_config_exists
+from fbox.config.config_editor import edit_config, get_config_path
 from fbox.config.profile_store import get_default_profile_name, get_profile_names
 from fbox.config.settings import AppConfig, load_config
+from fbox.containers.container_record import ContainerRecord
 from fbox.containers.docker_runtime import (
     DockerRuntimeError,
     build_create_args,
@@ -56,7 +57,6 @@ from fbox.containers.docker_runtime import (
     remove_container,
     require_docker,
 )
-from fbox.containers.models import ContainerRecord
 from fbox.containers.target_resolution import resolve_target, validate_mounts
 from fbox.state.container_state_store import ContainerStateStore
 
@@ -91,7 +91,7 @@ def main() -> None:
         raise SystemExit(1) from error
     except KeyboardInterrupt:
         print("\nAbgebrochen.", file=sys.stderr)
-        raise SystemExit(130)
+        raise SystemExit(130) from None
 
 
 def parse_args() -> argparse.Namespace:
@@ -129,23 +129,34 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("words", nargs="*", help=argparse.SUPPRESS)
     opts = parser.add_argument_group("Optionen")
     opts.add_argument(
-        "-h", "--help", action="help", default=argparse.SUPPRESS,
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
         help="Diese Hilfe anzeigen",
     )
     opts.add_argument(
-        "-p", "--profile", default=None, metavar="PROFIL",
+        "-p",
+        "--profile",
+        default=None,
+        metavar="PROFIL",
         help="Benanntes Profil verwenden (none = kein Profil)",
     )
     opts.add_argument(
-        "-c", "--config", action="store_true",
+        "-c",
+        "--config",
+        action="store_true",
         help="Konfiguration im Editor oeffnen",
     )
     opts.add_argument(
-        "-d", "--debug", action="store_true",
+        "-d",
+        "--debug",
+        action="store_true",
         help="Diagnose-Informationen anzeigen",
     )
-    opts.add_argument("--print-config-path", action="store_true",
-                      help=argparse.SUPPRESS)
+    opts.add_argument(
+        "--print-config-path", action="store_true", help=argparse.SUPPRESS
+    )
     return parser
 
 
@@ -167,37 +178,9 @@ def _resolve_positionals(
     elif words == ["ls"]:
         raw.ls = True
     elif words[0] in {"profile", "profiles", "pf"}:
-        sub = words[1:]
-        if not sub or sub == ["ls"]:
-            raw.profile_cmd = ("ls",)
-        elif sub[0] == "default":
-            if len(sub) < 2:
-                parser.error(f"{words[0]} default: PID fehlt")
-            raw.profile_cmd = ("default", sub[1])
-        elif sub == ["new"]:
-            raw.profile_cmd = ("new",)
-        elif sub[0] == "edit":
-            if len(sub) < 2:
-                parser.error(f"{words[0]} edit: PID fehlt")
-            raw.profile_cmd = ("edit", sub[1])
-        elif sub[0] == "rm":
-            if len(sub) < 2:
-                parser.error(f"{words[0]} rm: PID fehlt")
-            raw.profile_cmd = ("rm", sub[1])
-        else:
-            parser.error(f"Unbekannter {words[0]}-Befehl: {' '.join(sub)}")
+        raw.profile_cmd = _parse_profile_subcommand(parser, words[0], words[1:])
     elif words[0] in {"rm", "inspect"}:
-        cmd = words[0]
-        if len(words) < 2:
-            parser.error(f"{cmd}: ID fehlt.  Verwendung: fbox {cmd} ID")
-        try:
-            numeric_id = int(words[1])
-        except ValueError:
-            parser.error(f"{cmd}: ID muss eine Zahl sein, nicht '{words[1]}'")
-        if cmd == "rm":
-            raw.rm = numeric_id
-        else:
-            raw.inspect = numeric_id
+        _parse_id_command(parser, raw, words)
     elif words == ["commit"]:
         raw.commit = True
     elif len(words) == 1:
@@ -206,6 +189,48 @@ def _resolve_positionals(
         parser.error(f"Unbekannte Argumente: {' '.join(words)}")
 
     return raw
+
+
+def _parse_profile_subcommand(
+    parser: argparse.ArgumentParser,
+    prefix: str,
+    sub: list[str],
+) -> tuple[str, ...]:
+    if not sub or sub == ["ls"]:
+        return ("ls",)
+    if sub[0] == "default":
+        if len(sub) < 2:
+            parser.error(f"{prefix} default: PID fehlt")
+        return ("default", sub[1])
+    if sub == ["new"]:
+        return ("new",)
+    if sub[0] == "edit":
+        if len(sub) < 2:
+            parser.error(f"{prefix} edit: PID fehlt")
+        return ("edit", sub[1])
+    if sub[0] == "rm":
+        if len(sub) < 2:
+            parser.error(f"{prefix} rm: PID fehlt")
+        return ("rm", sub[1])
+    parser.error(f"Unbekannter {prefix}-Befehl: {' '.join(sub)}")
+
+
+def _parse_id_command(
+    parser: argparse.ArgumentParser,
+    raw: argparse.Namespace,
+    words: list[str],
+) -> None:
+    cmd = words[0]
+    if len(words) < 2:
+        parser.error(f"{cmd}: ID fehlt.  Verwendung: fbox {cmd} ID")
+    try:
+        numeric_id = int(words[1])
+    except ValueError:
+        parser.error(f"{cmd}: ID muss eine Zahl sein, nicht '{words[1]}'")
+    if cmd == "rm":
+        raw.rm = numeric_id
+    else:
+        raw.inspect = numeric_id
 
 
 def maybe_handle_config_flags(
@@ -244,6 +269,7 @@ def _dispatch_profile_cmd(profile_cmd: tuple[str, ...], config: AppConfig) -> in
         cmd_profile_set_default,
     )
     from fbox.config.settings import get_config_file
+
     config_path = get_config_file()
     verb = profile_cmd[0]
     if verb == "ls":
