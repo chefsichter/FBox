@@ -10,7 +10,7 @@ Architecture:
     │  └──────────────┬────────────────────┘  │
     │  ┌──────────────▼────────────────────┐  │
     │  │  Mount validation                │  │
-    │  │  → existing directories only     │  │
+    │  │  → existing paths (files/dirs)   │  │
     │  └───────────────────────────────────┘  │
     └─────────────────────────────────────────┘
 
@@ -50,8 +50,6 @@ def validate_mounts(project_path: Path, mount_paths: list[str]) -> list[str]:
         source = Path(raw_source).expanduser()
         if not source.exists():
             raise ValueError(f"Mount existiert nicht: {raw_source}")
-        if not source.is_dir():
-            raise ValueError(f"Mount ist kein Verzeichnis: {raw_source}")
         resolved = str(source.resolve())
         entry = resolved
         if destination:

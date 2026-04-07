@@ -17,7 +17,7 @@ gpu_vendor = "none"
 # --- Dateisystem ---
 workspace_readonly = false
 extra_mounts_readonly = true
-extra_mounts = []              # z.B. ["~/.cache/huggingface:/root/.cache/huggingface:rw"]
+extra_mounts = []              # z.B. ["~/.cache/huggingface:~/.cache/huggingface:rw"]
 tmpfs = "/tmp:rw,noexec,nosuid"  # leer = deaktiviert
 
 # --- Ressourcen ---
@@ -38,16 +38,55 @@ workspace_readonly = true
 memory_limit = "4g"
 pids_limit = 512
 
-[profiles.llm]
+[profiles.fbra-dev-rocm]
+default_image = "fbra-dev-rocm:latest"
 default_network = "bridge"
-root_mode = "root"
-tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
-extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]
-
-[profiles.rocm]
-default_image = "rocm/dev-ubuntu-24.04:latest"
-default_network = "bridge"
-root_mode = "root"
+root_mode = "host-user"
 gpu_vendor = "amd"
-tmpfs = "/tmp:rw,exec,nosuid"  # leer = deaktiviert
-extra_flags = ["--cap-add", "CHOWN", "--cap-add", "FOWNER", "--cap-add", "DAC_OVERRIDE", "--cap-add", "SETUID", "--cap-add", "SETGID"]
+extra_mounts = ["~/.cache/huggingface:~/.cache/huggingface:rw"]
+tmpfs = "/tmp:rw,exec,nosuid"
+extra_flags = [
+  "--cap-add", "CHOWN",
+  "--cap-add", "FOWNER",
+  "--cap-add", "DAC_OVERRIDE",
+  "--cap-add", "SETUID",
+  "--cap-add", "SETGID",
+]
+
+[profiles.fbra-dev-llm]
+default_image = "fbra-dev-llm:latest"
+default_network = "bridge"
+root_mode = "host-user"
+gpu_vendor = "amd"
+extra_mounts = [
+  "~/.cache/huggingface:~/.cache/huggingface:rw",
+  "~/.claude/.credentials.json:~/.claude/.credentials.json:rw",
+  "~/.codex/auth.json:~/.codex/auth.json:rw",
+]
+tmpfs = "/tmp:rw,exec,nosuid"
+extra_flags = [
+  "--cap-add", "CHOWN",
+  "--cap-add", "FOWNER",
+  "--cap-add", "DAC_OVERRIDE",
+  "--cap-add", "SETUID",
+  "--cap-add", "SETGID",
+]
+
+[profiles.fbra-running]
+default_image = "fbra-running:latest"
+default_network = "bridge"
+root_mode = "host-user"
+gpu_vendor = "amd"
+extra_mounts = [
+  "~/.cache/huggingface:~/.cache/huggingface:rw",
+  "~/.claude/.credentials.json:~/.claude/.credentials.json:rw",
+  "~/.codex/auth.json:~/.codex/auth.json:rw",
+]
+tmpfs = "/tmp:rw,exec,nosuid"
+extra_flags = [
+  "--cap-add", "CHOWN",
+  "--cap-add", "FOWNER",
+  "--cap-add", "DAC_OVERRIDE",
+  "--cap-add", "SETUID",
+  "--cap-add", "SETGID",
+]

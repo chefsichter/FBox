@@ -179,9 +179,16 @@ Der interaktive Prompt fragt danach noch nach containerspezifischen Zusatz-Mount
 Jeder Container wird mit diesen Einschraenkungen erstellt:
 
 - `--cap-drop ALL` entzieht alle Linux Capabilities
-- `--security-opt no-new-privileges` verhindert Privilege Escalation
+- `--security-opt no-new-privileges` verhindert Privilege Escalation im `root`-Modus
 - `--tmpfs /tmp:rw,noexec,nosuid` legt `/tmp` im RAM an und macht es nicht ausfuehrbar
 - Netzwerk ist konfigurierbar (`bridge` / `none` / `host`)
+
+Im `host-user`-Modus startet der Container selbst weiterhin als root, damit fbox beim Oeffnen
+der Shell deinen Linux-User im Container auf dieselbe UID/GID spiegeln kann. Danach oeffnet
+fbox die Session als gemappten User mit dessen Home-Verzeichnis und richtet `sudo` per
+`NOPASSWD` ein. So bleiben Dateien im Workspace auf dem Host deinem User zugeordnet, waehrend
+`sudo apt install ...` im Container weiter moeglich bleibt. Da `sudo` dafuer eine gezielte
+Privilege Escalation braucht, setzt fbox `no-new-privileges` in diesem Modus bewusst nicht.
 
 ---
 

@@ -157,7 +157,7 @@ def _ask_config_questions(base: AppConfig) -> dict[str, object]:
             ["none", "bridge", "host"],
         ),
         root_mode=ask_choice(
-            "Container standardmaessig als root oder mit deinem Host-User starten",
+            "Container als root oder mit gemapptem Host-User + sudo starten",
             base.root_mode,
             ["root", "host-user"],
         ),
