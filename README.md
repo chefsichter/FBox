@@ -36,6 +36,36 @@ Hinweis fuer Windows:
 Das PowerShell-Skript startet nur den Python-Installer. Der erzeugte Wrapper-Pfad bleibt eine
 Einstellung aus der fbox-Konfiguration und ist derzeit weiterhin auf Unix-Pfade ausgerichtet.
 
+### Credential-Backup fuer mehrere Rechner
+
+Fuer die in `config/fbox.example.toml` gemounteten Credential-Dateien gibt es zwei Hilfsskripte:
+
+```bash
+./scripts/backup_fbox_creds.sh -r age1...
+./scripts/restore_fbox_creds.sh -i ~/.config/age/key.txt
+```
+
+Der Backup-Schritt sammelt diese Dateien aus dem aktuellen Home:
+
+- `~/.claude/.credentials.json`
+- `~/.codex/auth.json`
+- `~/.opencode/opencode.json`
+- `~/.local/share/opencode/auth.json`
+
+und schreibt ein verschluesseltes Bundle nach `secrets/fbox-creds.tar.gz.age`.
+
+Empfohlener Workflow:
+
+1. `mkdir -p ~/.config/age`
+2. `age-keygen -o ~/.config/age/key.txt`
+3. Public Key ausgeben: `age-keygen -y ~/.config/age/key.txt`
+4. Bundle erzeugen: `./scripts/backup_fbox_creds.sh -r <PUBLIC_KEY>`
+5. Nur die verschluesselte Datei `secrets/fbox-creds.tar.gz.age` weitergeben oder in ein privates Repo committen
+6. Auf dem Zielrechner mit demselben Private Key wiederherstellen: `./scripts/restore_fbox_creds.sh -i ~/.config/age/key.txt`
+
+Sicherheitsgrenze:
+Das Bundle enthaelt aktive Tokens. Niemals unverschluesselte Archive unter `secrets/` committen.
+
 ### Entfernen
 
 Linux / Ubuntu:

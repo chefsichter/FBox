@@ -9,3 +9,6 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 .coverage
+secrets/*.tar
+secrets/*.tgz
+secrets/*.tar.gz
