@@ -62,6 +62,8 @@ extra_mounts = [
   "~/.cache/huggingface:~/.cache/huggingface:rw",
   "~/.claude/.credentials.json:~/.claude/.credentials.json:rw",
   "~/.codex/auth.json:~/.codex/auth.json:rw",
+  "~/.opencode/opencode.json:~/.opencode/opencode.json:rw",
+  "~/.local/share/opencode/auth.json:~/.local/share/opencode/auth.json:rw",
 ]
 tmpfs = "/tmp:rw,exec,nosuid"
 extra_flags = [
@@ -81,6 +83,8 @@ extra_mounts = [
   "~/.cache/huggingface:~/.cache/huggingface:rw",
   "~/.claude/.credentials.json:~/.claude/.credentials.json:rw",
   "~/.codex/auth.json:~/.codex/auth.json:rw",
+  "~/.opencode/opencode.json:~/.opencode/opencode.json:rw",
+  "~/.local/share/opencode/auth.json:~/.local/share/opencode/auth.json:rw",
 ]
 tmpfs = "/tmp:rw,exec,nosuid"
 extra_flags = [
