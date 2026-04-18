@@ -241,6 +241,41 @@ def test_uninstall_fbox_removes_artifacts(monkeypatch, tmp_path: Path) -> None:
     assert not (repo_root / ".venv").exists()
 
 
+def test_uninstall_fbox_preserves_state_when_containers_are_kept(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / ".venv").mkdir()
+    wrapper_path = tmp_path / "bin" / "fbox"
+    wrapper_path.parent.mkdir(parents=True)
+    wrapper_path.write_text("", encoding="utf-8")
+    config_dir = tmp_path / "config-home"
+    state_dir = tmp_path / "state-home"
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_dir))
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_dir))
+    config_path = config_dir / "fbox" / "config.toml"
+    state_path = state_dir / "fbox" / "containers.json"
+    config_path.parent.mkdir(parents=True)
+    state_path.parent.mkdir(parents=True)
+    config_path.write_text("", encoding="utf-8")
+    state_path.write_text("[]\n", encoding="utf-8")
+    remove_calls: list[bool] = []
+    monkeypatch.setattr(
+        "fbox.install.uninstall_cleanup.remove_managed_containers",
+        lambda: remove_calls.append(True),
+    )
+
+    uninstall_fbox(repo_root, wrapper_path, remove_containers=False)
+
+    assert remove_calls == []
+    assert not wrapper_path.exists()
+    assert not config_path.exists()
+    assert state_path.exists()
+    assert state_path.read_text(encoding="utf-8") == "[]\n"
+    assert not (repo_root / ".venv").exists()
+
+
 # ---------------------------------------------------------------------------
 # uninstall_main.py
 # ---------------------------------------------------------------------------

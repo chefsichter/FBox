@@ -42,7 +42,8 @@ def uninstall_fbox(
     if sys.platform == "win32" and wrapper_path.suffix.lower() != ".cmd":
         remove_file_if_present(wrapper_path.with_suffix(".cmd"))
     remove_file_if_present(get_config_file())
-    remove_file_if_present(get_state_file())
+    if remove_containers:
+        remove_file_if_present(get_state_file())
     remove_directory_if_present(repo_root / ".venv")
     remove_empty_parent_directories(wrapper_path.parent)
     remove_empty_parent_directories(get_config_file().parent)
